@@ -66,5 +66,14 @@ At `/daily-speak/` under the team's demo site — built with `BASE_PATH=/daily-s
 - Speech: "Google Speech-to-Text" = the browser's own SpeechRecognition (no key) with interim results — each word turns
   green/red as it is heard (src/lib/match.ts aligns words). No mic / no service → falls back to โหมดจำลอง at once
   (src/lib/speech.ts listenSim), labelled จำลอง. Example audio = browser speechSynthesis (US/UK, speed in settings).
-- Settings sheet (gear): accent, speed, checker (Google / จำลอง), daily reminder; "เริ่มเดโมใหม่" posts /api/reset to
+- PWA: public/manifest.webmanifest (relative paths — works under /daily-speak/), icons drawn in the theme (brown
+  square, sound-wave bars), public/sw.js (network-first, offline copy of the page; never caches /api; shows
+  notifications; `periodicsync` "streak-check" runs the evening check on Android when installed). src/lib/pwa.ts:
+  install (browser prompt, else InstallGuide dialog with iPhone/Android steps), permission, `notify()` — the phone's
+  own notification when allowed, else NotificationBanner drawn in the app labelled "แจ้งเตือนจำลอง". While open it
+  checks each minute: morning word (phone only) at remindAt; evening at eveningAt (default 20:00) only when today is
+  not practised and the streak > 0. วันนี้ shows an install card ("ไว้ทีหลัง" hides it) and, in the evening, a red
+  "อีก N ชั่วโมงจะเสียวันติด" strip.
+- Settings sheet (gear): accent, speed, checker (Google / จำลอง), แอปและการแจ้งเตือน (install, allow notifications,
+  morning reminder, evening streak reminder + "ทดลองส่งแจ้งเตือนตอนค่ำ" for the demo); "เริ่มเดโมใหม่" posts /api/reset to
   restore the seeded history so the story can be shown again.

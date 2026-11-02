@@ -11,4 +11,7 @@ export const settings = useLocalStorage("daily-speak:settings", {
   checker: "google" as "google" | "sim",
   remind: true,
   remindAt: "08:00",
+  // The evening reminder, sent only on a day not practised yet — before the streak is lost.
+  evening: true,
+  eveningAt: "20:00",
 }, { mergeDefaults: true });

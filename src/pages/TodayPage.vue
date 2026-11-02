@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { toast } from "vue-sonner";
-import { ArrowRight, CircleCheck, Flame, Lightbulb, Medal, Mic, RotateCcw, Volume2 } from "@lucide/vue";
+import { AlarmClock, ArrowRight, CircleCheck, Download, Flame, Lightbulb, Medal, Mic, RotateCcw, Volume2 } from "@lucide/vue";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { categories, levels, scoreLook, thaiDate, toneClass, type Today, type WordCard } from "@/data/words";
 import { api } from "@/lib/api";
+import { install, installed, installHidden } from "@/lib/pwa";
 import { settings } from "@/lib/settings";
 import { say } from "@/lib/speech";
 
@@ -18,6 +19,10 @@ const hour = new Date().getHours();
 const greeting = hour < 12 ? "สวัสดีตอนเช้า" : hour < 17 ? "สวัสดีตอนบ่าย" : "สวัสดีตอนเย็น";
 const word = computed(() => today.value?.word);
 const said = computed(() => word.value?.best.filter((b) => b !== null).length ?? 0);
+const icon = `${import.meta.env.BASE_URL}icon-192.png`;
+const [eh = 20, em = 0] = settings.value.eveningAt.split(":").map(Number);
+const atRisk = computed(() => !!today.value && !today.value.practisedToday && today.value.streak > 0 && hour * 60 + new Date().getMinutes() >= eh * 60 + em);
+const hoursLeft = Math.max(1, 24 - hour);
 const cta = computed(() => (word.value?.done ? "ฝึกซ้ำอีกรอบ" : said.value ? "ฝึกต่อ" : "เริ่มฝึกพูด"));
 
 async function load(): Promise<void> {
@@ -50,6 +55,16 @@ onMounted(load);
           <Flame class="size-4 text-primary" /> {{ today.streak.toLocaleString("th-TH") }} วันติด
         </div>
       </div>
+
+      <!-- Evening, not practised yet: the streak is about to be lost -->
+      <RouterLink v-if="atRisk" to="/practice" class="-mt-2 flex items-center gap-3 rounded-2xl border border-destructive/25 bg-destructive/10 p-3">
+        <span class="grid size-10 shrink-0 place-items-center rounded-full bg-destructive text-primary-foreground"><AlarmClock class="size-5" /></span>
+        <p class="flex-1 text-sm">
+          <span class="font-semibold text-destructive">อีกราว {{ hoursLeft.toLocaleString("th-TH") }} ชั่วโมงจะเสียวันติด {{ today.streak.toLocaleString("th-TH") }} วัน</span><br />
+          <span class="text-muted-foreground">ฝึกสักประโยคก่อนเที่ยงคืนก็นับแล้ว</span>
+        </p>
+        <ArrowRight class="size-4 shrink-0 text-muted-foreground" />
+      </RouterLink>
 
       <!-- The next medal to aim for -->
       <RouterLink v-if="today.nextMedal" to="/progress" class="-mt-2 flex items-center gap-3 rounded-2xl border border-accent/50 bg-accent/15 p-3 transition-colors hover:bg-accent/25">
@@ -125,6 +140,19 @@ onMounted(load);
       <Button as-child class="h-12 rounded-2xl text-base shadow-sm">
         <RouterLink :to="`/practice/${word.id}`"><Mic class="size-5" /> {{ cta }}</RouterLink>
       </Button>
+
+      <!-- Put the app on the home screen -->
+      <div v-if="!installed && !installHidden" class="flex items-center gap-3 rounded-2xl border bg-card p-4">
+        <img :src="icon" alt="" class="size-12 shrink-0 rounded-xl shadow-sm" />
+        <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span class="text-sm font-semibold">ติดตั้ง Daily Speak ไว้บนหน้าจอโฮม</span>
+          <span class="text-xs text-muted-foreground">เปิดได้ในแตะเดียว และได้แจ้งเตือนตอนค่ำก่อนเสียวันติด</span>
+        </div>
+        <div class="flex shrink-0 flex-col items-end gap-1">
+          <Button size="sm" class="h-9" @click="install"><Download /> ติดตั้ง</Button>
+          <button type="button" class="px-1 text-xs text-muted-foreground hover:text-foreground" @click="installHidden = true">ไว้ทีหลัง</button>
+        </div>
+      </div>
 
       <!-- Recent days -->
       <div class="flex flex-col gap-3">
