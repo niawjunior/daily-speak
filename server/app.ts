@@ -1,8 +1,8 @@
 import { cors } from "@elysiajs/cors";
 import { openapi } from "@elysiajs/openapi";
 import { Elysia, t } from "elysia";
-import { AiError, generate, MODELS, ping, serverKey, simulate, speak, TTS_MODEL, VOICES } from "./ai";
-import { aiDays, attempts, dateOfDay, dayKey, dayNumber, learner, seedAttempts, wordOfDay, words, type Attempt, type Word } from "./data";
+import { AiError, generate, MODELS, ping, serverKey, simulate, speak, TTS_MODEL, VOICES } from "./ai.js";
+import { aiDays, attempts, dateOfDay, dayKey, dayNumber, learner, seedAttempts, wordOfDay, words, type Attempt, type Word } from "./data.js";
 
 // Deployed under a path (sales-demo/<app>/): built and started with BASE_PATH=/<app>/ — the page, the API and their docs
 // all live under it. "/" when run on its own.

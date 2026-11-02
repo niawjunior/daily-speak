@@ -92,3 +92,7 @@ At `/daily-speak/` under the team's demo site — built with `BASE_PATH=/daily-s
 - Settings sheet (gear): accent, speed, checker (Google / จำลอง), แอปและการแจ้งเตือน (install, allow notifications,
   morning reminder, evening streak reminder + "ทดลองส่งแจ้งเตือนตอนค่ำ" for the demo); "เริ่มเดโมใหม่" posts /api/reset to
   restore the seeded history so the story can be shown again.
+- Vercel (daily-speak-ten.vercel.app, from GitHub main): the page is the Vite build; the API is one function,
+  api/index.ts, which hands every request to server/app (vercel.json rewrites /api/* → it, every other path →
+  index.html). Server relative imports end in `.js` (Node ESM on Vercel). Its data is in memory per function instance —
+  an idle restart puts back the seeded history. Optional env AI_GATEWAY_API_KEY in the Vercel project.
