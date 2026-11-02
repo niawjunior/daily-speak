@@ -11,6 +11,11 @@ export const pages = [
 
 export const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  routes: [...pages.map(({ path, component }) => ({ path, component })), { path: "/:pathMatch(.*)*", redirect: "/" }],
+  routes: [
+    ...pages.map(({ path, component }) => ({ path, component })),
+    // Opened from the settings sheet — not a tab of its own.
+    { path: "/settings/ai", component: () => import("./pages/AiSettingsPage.vue") },
+    { path: "/:pathMatch(.*)*", redirect: "/" },
+  ],
   scrollBehavior: () => ({ top: 0 }),
 });

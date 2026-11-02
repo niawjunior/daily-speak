@@ -2,7 +2,7 @@
 import { computed, ref } from "vue";
 import { toast } from "vue-sonner";
 import { useRouter } from "vue-router";
-import { Bell, BellRing, Download, RotateCcw, Settings, Smartphone } from "@lucide/vue";
+import { Bell, BellRing, ChevronRight, Download, RotateCcw, Settings, Smartphone, Sparkles } from "@lucide/vue";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -46,8 +46,14 @@ function opened(v: boolean): void {
   if (v) draft.value = { ...settings.value };
   open.value = v;
 }
+function toAi(): void {
+  open.value = false;
+  router.push("/settings/ai");
+}
 function save(): void {
-  settings.value = { ...draft.value };
+  // The sheet's own choices — the AI ones are set on their page.
+  const { accent, rate, checker, remind, remindAt, evening, eveningAt } = draft.value;
+  settings.value = { ...settings.value, accent, rate, checker, remind, remindAt, evening, eveningAt };
   open.value = false;
   const d = draft.value;
   const when = [d.remind && `เตือนคำใหม่ ${d.remindAt} น.`, d.evening && `เตือนตอนค่ำ ${d.eveningAt} น. ถ้ายังไม่ได้ฝึก`].filter(Boolean).join(" · ");
@@ -103,6 +109,15 @@ async function reset(): Promise<void> {
             {{ canListen ? "Google ฟังเสียงจริงจากไมโครโฟน · โหมดจำลองใช้ตอนนำเสนอที่ไม่มีไมค์ ระบบจะ “ได้ยิน” ประโยคให้เอง" : "เบราว์เซอร์นี้ฟังเสียงจากไมค์ไม่ได้ — จะใช้โหมดจำลองให้อัตโนมัติ (ใช้ Chrome หรือ Safari เพื่อฟังเสียงจริง)" }}
           </p>
         </div>
+        <!-- New words by AI — a page of its own -->
+        <button type="button" class="flex items-center gap-3 rounded-xl border bg-card p-4 text-left transition-colors hover:border-primary/40" @click="toAi">
+          <span class="grid size-10 shrink-0 place-items-center rounded-full bg-accent text-accent-foreground"><Sparkles class="size-5" /></span>
+          <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span class="text-sm font-medium">AI สร้างคำใหม่</span>
+            <span class="text-xs text-muted-foreground">{{ settings.aiKey ? `เชื่อมต่อ Vercel AI Gateway แล้ว${settings.aiDaily ? " · สร้างทุกวัน" : ""}` : "ใส่ API key ของ Vercel AI Gateway" }}</span>
+          </span>
+          <ChevronRight class="size-4 shrink-0 text-muted-foreground" />
+        </button>
         <!-- The app on the phone, and its reminders -->
         <div class="flex flex-col gap-2">
           <Label>แอปและการแจ้งเตือน</Label>

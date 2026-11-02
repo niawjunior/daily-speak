@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { toast } from "vue-sonner";
-import { AlarmClock, ArrowRight, CircleCheck, Download, Flame, Lightbulb, Medal, Mic, RotateCcw, Volume2 } from "@lucide/vue";
+import { AlarmClock, ArrowRight, CircleCheck, Download, Flame, Lightbulb, Medal, Mic, RotateCcw, Sparkles, Volume2 } from "@lucide/vue";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { categories, levels, scoreLook, thaiDate, toneClass, type Today, type WordCard } from "@/data/words";
 import { api } from "@/lib/api";
+import { aiTriedOn, makeTodayWord, modelName } from "@/lib/ai";
 import { install, installed, installHidden } from "@/lib/pwa";
 import { settings } from "@/lib/settings";
 import { say } from "@/lib/speech";
@@ -14,6 +15,7 @@ import { say } from "@/lib/speech";
 const today = ref<Today | null>(null);
 const recent = ref<WordCard[]>([]);
 const failed = ref(false);
+const making = ref(false);
 
 const hour = new Date().getHours();
 const greeting = hour < 12 ? "สวัสดีตอนเช้า" : hour < 17 ? "สวัสดีตอนบ่าย" : "สวัสดีตอนเย็น";
@@ -34,6 +36,16 @@ async function load(): Promise<void> {
   }
   today.value = t.data;
   recent.value = w.data.slice(1, 4);
+  // The first visit of the day with "สร้างคำใหม่ด้วย AI ทุกวัน" on: AI makes today's word.
+  if (settings.value.aiDaily && !t.data.word.source && aiTriedOn.value !== t.data.date) {
+    aiTriedOn.value = t.data.date;
+    making.value = true;
+    const res = await makeTodayWord();
+    making.value = false;
+    if (!res.word) return void toast.error(`${res.error} — วันนี้ใช้คำจากคลังไปก่อน`);
+    toast.success(`AI สร้างคำของวันนี้ให้แล้ว: ${res.word.word}`);
+    await load();
+  }
 }
 onMounted(load);
 </script>
@@ -81,8 +93,15 @@ onMounted(load);
         <ArrowRight class="size-4 shrink-0 text-muted-foreground" />
       </RouterLink>
 
+      <!-- AI is making today's word -->
+      <div v-if="making" class="flex flex-col items-center gap-3 rounded-3xl border border-accent/50 bg-accent/15 p-8 text-center">
+        <span class="grid size-12 place-items-center rounded-full bg-accent text-accent-foreground"><Sparkles class="size-6 animate-pulse" /></span>
+        <p class="font-semibold">AI กำลังคิดคำของวันนี้…</p>
+        <p class="text-sm text-muted-foreground">{{ settings.aiKey ? modelName(settings.aiModel) : "โหมดจำลอง" }} · หมวด{{ settings.aiCategory === "any" ? "สุ่ม" : categories[settings.aiCategory as keyof typeof categories] }} · ระดับ {{ settings.aiLevel }}</p>
+      </div>
+
       <!-- The word of the day -->
-      <article class="relative overflow-hidden rounded-3xl bg-primary p-6 text-primary-foreground shadow-md">
+      <article v-else class="relative overflow-hidden rounded-3xl bg-primary p-6 text-primary-foreground shadow-md">
         <div class="pointer-events-none absolute -top-12 -right-12 size-44 rounded-full bg-accent/30" />
         <div class="pointer-events-none absolute -bottom-16 -left-10 size-36 rounded-full bg-primary-foreground/5" />
         <div class="relative flex flex-col gap-4">
@@ -102,6 +121,9 @@ onMounted(load);
           </div>
           <p class="text-xl font-medium">{{ word.meaning }}</p>
           <div class="flex flex-wrap gap-2">
+            <span v-if="word.source" class="flex items-center gap-1 rounded-full bg-accent px-3 py-1 text-xs font-medium text-accent-foreground">
+              <Sparkles class="size-3.5" /> {{ word.source === "sim" ? "AI · จำลอง" : `สร้างโดย AI · ${modelName(word.model)}` }}
+            </span>
             <span class="rounded-full bg-primary-foreground/15 px-3 py-1 text-xs">หมวด{{ categories[word.category] }}</span>
             <span class="rounded-full bg-primary-foreground/15 px-3 py-1 text-xs">{{ word.sentences.length.toLocaleString("th-TH") }} ประโยคให้พูดตาม</span>
           </div>

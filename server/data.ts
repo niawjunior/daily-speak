@@ -20,6 +20,10 @@ export interface Word {
   level: "A1" | "A2" | "B1";
   tip: string;
   sentences: Sentence[];
+  // A word made by AI (server/ai.ts): "ai" through AI Gateway, "sim" from the จำลอง reserve; the model and the day.
+  source?: "ai" | "sim";
+  model?: string;
+  createdOn?: string;
 }
 
 export interface Attempt {
@@ -268,7 +272,11 @@ const order = (() => {
 
 export const dayKey = (d: Date) => new Date(d.getTime() + 7 * 3_600_000).toISOString().slice(0, 10); // Bangkok date
 export const dayNumber = (key: string) => Math.round((Date.parse(key) - Date.parse(learner.startedOn)) / DAY) + 1;
+// The days whose word AI made — taking the place of the shuffled one.
+export const aiDays = new Map<string, number>();
 export const wordOfDay = (key: string): Word => {
+  const made = aiDays.get(key);
+  if (made !== undefined) return words.find((w) => w.id === made)!;
   const n = Math.max(1, dayNumber(key));
   return words.find((w) => w.id === order[(n - 1) % order.length])!;
 };

@@ -74,6 +74,14 @@ At `/daily-speak/` under the team's demo site — built with `BASE_PATH=/daily-s
   checks each minute: morning word (phone only) at remindAt; evening at eveningAt (default 20:00) only when today is
   not practised and the streak > 0. วันนี้ shows an install card ("ไว้ทีหลัง" hides it) and, in the evening, a red
   "อีก N ชั่วโมงจะเสียวันติด" strip.
+- AI new words (asked by เนี้ยว, a real outside call): server/ai.ts calls Vercel AI Gateway (OpenAI-compatible
+  `https://ai-gateway.vercel.sh/v1/chat/completions`, JSON answer → a Word with 3 sentences + slip). Models: Gemini 2.5
+  Flash Lite (default), Gemini 2.5 Flash, Claude Haiku 5.5, GPT-5 mini. The key is NEVER in the repo: typed on the page
+  `/settings/ai` (from the gear sheet, "AI สร้างคำใหม่"), kept in the phone's localStorage (settings.aiKey), sent in the
+  body of POST /api/ai/test and /api/ai/generate; else the server's env AI_GATEWAY_API_KEY; else โหมดจำลอง — 6 ready
+  words in server/ai.ts `reserve`, labelled "AI · จำลอง". A made word is pushed to `words` and set as today's word
+  (data.ts `aiDays`, in memory). "สร้างคำใหม่ด้วย AI ทุกวัน" (aiDaily) makes it on the first visit of the day (วันนี้
+  shows "AI กำลังคิดคำของวันนี้…"); the word card shows "สร้างโดย AI · <model>". GET /api/ai lists the models and words made.
 - Settings sheet (gear): accent, speed, checker (Google / จำลอง), แอปและการแจ้งเตือน (install, allow notifications,
   morning reminder, evening streak reminder + "ทดลองส่งแจ้งเตือนตอนค่ำ" for the demo); "เริ่มเดโมใหม่" posts /api/reset to
   restore the seeded history so the story can be shown again.

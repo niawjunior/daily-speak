@@ -1,7 +1,8 @@
 import { cors } from "@elysiajs/cors";
 import { openapi } from "@elysiajs/openapi";
 import { Elysia, t } from "elysia";
-import { attempts, dateOfDay, dayKey, dayNumber, learner, seedAttempts, wordOfDay, type Attempt, type Word } from "./data";
+import { AiError, generate, MODELS, ping, serverKey, simulate } from "./ai";
+import { aiDays, attempts, dateOfDay, dayKey, dayNumber, learner, seedAttempts, wordOfDay, words, type Attempt, type Word } from "./data";
 
 // Deployed under a path (sales-demo/<app>/): built and started with BASE_PATH=/<app>/ — the page, the API and their docs
 // all live under it. "/" when run on its own.
@@ -146,6 +147,46 @@ export const app = new Elysia({ prefix: "/api" })
   .post("/reset", () => {
     seedAttempts();
     return { ok: true };
-  });
+  })
+  // ——— New words by AI (server/ai.ts). The key comes from the page (kept on the phone), else the server's own. ———
+  .get("/ai", () => ({
+    models: MODELS,
+    serverKey: !!serverKey(),
+    made: words
+      .filter((w) => w.source)
+      .map((w) => ({ id: w.id, word: w.word, meaning: w.meaning, category: w.category, level: w.level, source: w.source!, model: w.model ?? "", createdOn: w.createdOn ?? "", today: aiDays.get(today()) === w.id }))
+      .reverse(),
+  }))
+  .post(
+    "/ai/test",
+    async ({ body, status }) => {
+      const key = body.key?.trim() || serverKey();
+      if (!key) return status(400, { error: "ยังไม่ได้ใส่ API key" });
+      try {
+        return { ok: true, ...(await ping(key, body.model)) };
+      } catch (e) {
+        return status(e instanceof AiError ? 400 : 500, { error: e instanceof AiError ? e.message : "ทดสอบไม่สำเร็จ — ลองอีกครั้ง" });
+      }
+    },
+    { body: t.Object({ key: t.Optional(t.String()), model: t.String() }) },
+  )
+  // Makes today's word anew: through AI Gateway with a key, else from the จำลอง reserve.
+  .post(
+    "/ai/generate",
+    async ({ body, status }) => {
+      const key = body.key?.trim() || serverKey();
+      const avoid = words.map((w) => w.word.toLowerCase());
+      try {
+        const made = key ? await generate(key, body.model, { level: body.level, category: body.category, avoid }) : await simulate({ avoid, category: body.category });
+        const word: Word = { ...made, id: Math.max(...words.map((w) => w.id)) + 1, createdOn: today() };
+        words.push(word);
+        aiDays.set(today(), word.id);
+        return { word: summary(word, dayNumber(today())) };
+      } catch (e) {
+        return status(e instanceof AiError ? 400 : 500, { error: e instanceof AiError ? e.message : "สร้างคำไม่สำเร็จ — ลองอีกครั้ง" });
+      }
+    },
+    { body: t.Object({ key: t.Optional(t.String()), model: t.String(), level: t.String(), category: t.String() }) },
+  );
 
 export type App = typeof app;
