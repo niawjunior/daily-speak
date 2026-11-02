@@ -1,5 +1,5 @@
-// Sample data for the demo — kept in memory: a restart starts again from here.
-// Everyday English words, one a day, each with short sentences to say aloud.
+// The word bank: everyday English words, one a day, each with short sentences to say aloud. The page holds it, so it
+// works offline; which word comes on which day is up to each phone (src/lib/journal.ts).
 
 export type Category = "home" | "work" | "food" | "travel" | "shopping" | "social";
 
@@ -253,60 +253,3 @@ export const words: Word[] = [
     ],
   },
 ];
-
-// The learner of this demo — a sample person.
-export const learner = { name: "มายด์", goal: 3, startedOn: "2026-10-14" };
-
-// One word a day: day 1 is the day the learner started; the order is a fixed shuffle so it feels random.
-const DAY = 86_400_000;
-const order = (() => {
-  const ids = words.map((w) => w.id);
-  let seed = 20261006;
-  const rand = () => ((seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648) / 2_147_483_648);
-  for (let i = ids.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1));
-    [ids[i], ids[j]] = [ids[j]!, ids[i]!];
-  }
-  return ids;
-})();
-
-export const dayKey = (d: Date) => new Date(d.getTime() + 7 * 3_600_000).toISOString().slice(0, 10); // Bangkok date
-export const dayNumber = (key: string) => Math.round((Date.parse(key) - Date.parse(learner.startedOn)) / DAY) + 1;
-// The days whose word AI made — taking the place of the shuffled one.
-export const aiDays = new Map<string, number>();
-export const wordOfDay = (key: string): Word => {
-  const made = aiDays.get(key);
-  if (made !== undefined) return words.find((w) => w.id === made)!;
-  const n = Math.max(1, dayNumber(key));
-  return words.find((w) => w.id === order[(n - 1) % order.length])!;
-};
-export const dateOfDay = (n: number) => new Date(Date.parse(learner.startedOn) + (n - 1) * DAY).toISOString().slice(0, 10);
-
-// Practice so far: every day since the start but one, today's word not yet — so the demo opens on a fresh word.
-// The day missed is a week ago: the streak stands at 6, and practising today earns the 7-day medal on screen.
-export const attempts: Attempt[] = [];
-// Fills the practice history from the start again — on boot, and from "เริ่มเดโมใหม่".
-export function seedAttempts(): void {
-  attempts.length = 0;
-  const today = dayNumber(dayKey(new Date()));
-  const skipped = new Set([today - 7]);
-  let id = 1;
-  let seed = 7;
-  const rand = () => ((seed = (seed * 16_807) % 2_147_483_647) / 2_147_483_647);
-  for (let n = 1; n < today; n++) {
-    if (skipped.has(n)) continue;
-    const w = wordOfDay(dateOfDay(n));
-    const base = Date.parse(dateOfDay(n)) + (12 + Math.floor(rand() * 10)) * 3_600_000 - 7 * 3_600_000;
-    w.sentences.forEach((s, i) => {
-      const tries = rand() < 0.45 ? 2 : 1;
-      for (let t = 0; t < tries; t++) {
-        const last = t === tries - 1;
-        const missed = last && rand() < 0.75 ? [] : [s.slip[0]];
-        const total = s.en.split(" ").length;
-        const score = Math.round(((total - missed.length) / total) * 100);
-        attempts.push({ id: id++, wordId: w.id, sentence: i, score, missed, at: new Date(base + (i * 3 + t) * 60_000).toISOString() });
-      }
-    });
-  }
-}
-seedAttempts();

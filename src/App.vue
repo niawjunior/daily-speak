@@ -4,7 +4,7 @@ import InstallGuide from "@/components/InstallGuide.vue";
 import NotificationBanner from "@/components/NotificationBanner.vue";
 import { Toaster } from "@/components/ui/sonner";
 import { startApp } from "@/lib/pwa";
-import { demoRound } from "@/lib/settings";
+import { round } from "@/lib/journal";
 import "vue-sonner/style.css";
 
 startApp();
@@ -13,7 +13,7 @@ startApp();
 <template>
   <AppShell>
     <RouterView v-slot="{ Component }">
-      <component :is="Component" :key="demoRound" />
+      <component :is="Component" :key="round" />
     </RouterView>
   </AppShell>
   <NotificationBanner />

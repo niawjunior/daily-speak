@@ -51,11 +51,20 @@ At `/daily-speak/` under the team's demo site — built with `BASE_PATH=/daily-s
 ## What we decided
 - Name: **Daily Speak** (ฝึกพูดอังกฤษวันละคำ). Mobile-first: one phone-width column (centred on desktop), top bar with
   settings, bottom bar with 4 tabs. Theme “คาเฟ่อบอุ่น”; green `--success` = said right, `--destructive` = wrong.
-- Sample learner "มายด์", started 14 ต.ค. 2569; one word a day from 24 everyday words (server/data.ts, a fixed
-  shuffle by day number). Each word: IPA, Thai meaning, category, level, a pronunciation tip, 3 short sentences
-  (each with a `slip` = what the simulated listener mishears the first time). History is seeded: every day but one,
-  today's word not yet practised. The missed day is a week ago, so the streak stands at 6.
-- Medals (server/app.ts MEDALS): 7 วันติด "เหรียญนักพูดหนึ่งสัปดาห์" (bronze) and 30 วันติด "เหรียญนักพูดหนึ่งเดือน" (gold);
+- Real data, per phone (decided with เนี้ยว, 2 พ.ย. 2569 — it was a shared server-side sample before): the learner's
+  journal lives in the phone's localStorage (src/lib/journal.ts, key daily-speak:journal) — the day they first opened
+  the app (day 1), a random seed for their own order of words, every sentence said, the words AI made for them. The
+  server keeps nothing of the learner. Pages read it through `todayOf()`, `wordsOf()`, `wordOf(id)`, `progressOf()`
+  inside `computed` (they redraw when it changes); ฝึกพูด saves with `addAttempt()`. A new phone starts at วันที่ 1,
+  0 วันติด, with empty states on วันนี้ (คำของวันก่อนๆ) and สถิติ.
+- Words: one a day from 24 everyday words in src/data/bank.ts (the page holds them, so it works offline), each round
+  of 24 in a new order (seed + round). Each word: IPA, Thai meaning, category, level, a pronunciation tip, 3 short
+  sentences (each with a `slip` = what the simulated listener mishears the first time).
+- โหมดเดโม (for presenting): "เริ่มเดโม" in the gear sheet switches to a separate journal (key daily-speak:demo) — the
+  sample learner "มายด์" who started 19 days ago and practised every day but the one a week ago, so the streak stands
+  at 6 and today's word is not practised yet. A strip under the top bar says "โหมดเดโม · ข้อมูลตัวอย่างของมายด์" with
+  "ออกจากเดโม"; "เริ่มเดโมใหม่" builds the sample afresh. Leaving it brings back the learner's own journal untouched.
+- Medals (src/lib/journal.ts MEDALS): 7 วันติด "เหรียญนักพูดหนึ่งสัปดาห์" (bronze) and 30 วันติด "เหรียญนักพูดหนึ่งเดือน" (gold);
   each run that reaches the mark earns it once more (count + dates). Demo story: the first sentence said today makes 7
   days → a celebration dialog on ฝึกพูด (confetti, "ดูเหรียญของฉัน"), a medal card on the summary. วันนี้ shows a strip
   "ฝึกวันนี้ได้เหรียญ…ทันที" / "อีก N วัน"; สถิติ has a เหรียญรางวัล card (earned or locked, progress of this run).
@@ -68,7 +77,8 @@ At `/daily-speak/` under the team's demo site — built with `BASE_PATH=/daily-s
   (src/lib/speech.ts listenSim), labelled จำลอง. Example audio = browser speechSynthesis (US/UK, speed in settings).
 - PWA: public/manifest.webmanifest (relative paths — works under /daily-speak/), icons drawn in the theme (brown
   square, sound-wave bars), public/sw.js (network-first, offline copy of the page; never caches /api; shows
-  notifications; `periodicsync` "streak-check" runs the evening check on Android when installed). src/lib/pwa.ts:
+  notifications; `periodicsync` "streak-check" runs the evening check on Android when installed — from the facts the page leaves in
+  Cache Storage "daily-speak-meta" → "journal": days practised lately, the words of the coming days, the medal marks). src/lib/pwa.ts:
   install (browser prompt, else InstallGuide dialog with iPhone/Android steps), permission, `notify()` — the phone's
   own notification when allowed, else NotificationBanner drawn in the app labelled "แจ้งเตือนจำลอง". While open it
   checks each minute: morning word (phone only) at remindAt; evening at eveningAt (default 20:00) only when today is
@@ -79,9 +89,10 @@ At `/daily-speak/` under the team's demo site — built with `BASE_PATH=/daily-s
   Flash Lite (default), Gemini 2.5 Flash, Claude Haiku 5.5, GPT-5 mini. The key is NEVER in the repo: typed on the page
   `/settings/ai` (from the gear sheet, "AI สร้างคำใหม่"), kept in the phone's localStorage (settings.aiKey), sent in the
   body of POST /api/ai/test and /api/ai/generate; else the server's env AI_GATEWAY_API_KEY; else โหมดจำลอง — 6 ready
-  words in server/ai.ts `reserve`, labelled "AI · จำลอง". A made word is pushed to `words` and set as today's word
-  (data.ts `aiDays`, in memory). "สร้างคำใหม่ด้วย AI ทุกวัน" (aiDaily) makes it on the first visit of the day (วันนี้
-  shows "AI กำลังคิดคำของวันนี้…"); the word card shows "สร้างโดย AI · <model>". GET /api/ai lists the models and words made.
+  words in server/ai.ts `reserve`, labelled "AI · จำลอง". The phone sends the words it already has (`avoid`); the server
+  keeps nothing — the made word is kept in the phone's journal (`made`) and set as today's word (`aiDays`). "สร้างคำใหม่ด้วย AI ทุกวัน" (aiDaily) makes it on the first visit of the day (วันนี้
+  shows "AI กำลังคิดคำของวันนี้…"); the word card shows "สร้างโดย AI · <model>". GET /api/ai lists the models and voices; the
+  words made are listed from the journal.
 - AI voice (เสียงอ่าน on `/settings/ai`): settings.voice "device" (browser speechSynthesis) | "ai" (Gemini 3.8 Flash
   TTS, voices Kore · Puck · Zephyr · Charon in settings.aiVoice). Server: POST /api/ai/speech → AI Gateway
   `POST https://ai-gateway.vercel.sh/v4/ai/speech-model` (headers ai-gateway-protocol-version 0.0.1,
@@ -89,11 +100,12 @@ At `/daily-speak/` under the team's demo site — built with `BASE_PATH=/daily-s
   answer `{ audio: base64 }`), kept in memory per voice+accent+text. Client src/lib/voice.ts: `say()` in
   src/lib/speech.ts goes through it for every "ฟัง" button, speed = playbackRate, one shared player unlocked inside the
   press (iPhone), today's word + sentences preloaded; any failure → the phone's voice (one toast).
-- Settings sheet (gear): ชื่อของคุณ (settings.name, kept on the phone; empty → the sample "มายด์" from server/data.ts; used in
-  the วันนี้ greeting), accent, speed, checker (Google / จำลอง), แอปและการแจ้งเตือน (install, allow notifications,
-  morning reminder, evening streak reminder + "ทดลองส่งแจ้งเตือนตอนค่ำ" for the demo); "เริ่มเดโมใหม่" posts /api/reset to
-  restore the seeded history so the story can be shown again.
-- Vercel (daily-speak-ten.vercel.app, from GitHub main): the page is the Vite build; the API is one function,
-  api/index.ts, which hands every request to server/app (vercel.json rewrites /api/* → it, every other path →
-  index.html). Server relative imports end in `.js` (Node ESM on Vercel). Its data is in memory per function instance —
-  an idle restart puts back the seeded history. Optional env AI_GATEWAY_API_KEY in the Vercel project.
+- Settings sheet (gear): ชื่อของคุณ (settings.name, kept on the phone; empty → no name, "มายด์" in the demo; used in
+  the วันนี้ greeting), accent, speed, checker (Google / จำลอง — after a microphone error the phone stays on จำลอง until
+  switched back here), แอปและการแจ้งเตือน (install, allow notifications, morning reminder, evening streak reminder +
+  "ทดลองส่งแจ้งเตือนตอนค่ำ"), โหมดเดโม (เริ่มเดโม · เริ่มเดโมใหม่ · ออกจากเดโม).
+- Server = AI only: GET /api/ai, POST /api/ai/test, /api/ai/speech, /api/ai/generate (server/app.ts).
+- Vercel (daily-speak-ten.vercel.app, from GitHub niawjunior/daily-speak main): the page is the Vite build; the API is
+  one function, api/index.ts, which hands every request to server/app (vercel.json rewrites /api/* → it, every other
+  path → index.html). Server relative imports end in `.js` (Node ESM on Vercel). Optional env AI_GATEWAY_API_KEY in
+  the Vercel project (else the key typed on the page, else โหมดจำลอง).

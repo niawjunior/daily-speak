@@ -13,7 +13,7 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// The network first, what was kept when it is not there. The API is never kept: its answers are of today.
+// The network first, what was kept when it is not there. The API (AI only) is never kept.
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   const url = new URL(req.url);
@@ -80,15 +80,24 @@ async function eveningCheck() {
   if (bkk.getHours() * 60 + bkk.getMinutes() < h * 60 + m) return;
   const sent = await meta.match("evening-sent");
   if (sent && (await sent.text()) === day) return;
-  const res = await fetch(`${scope}api/today`).catch(() => null);
-  if (!res || !res.ok) return;
-  const today = await res.json();
-  if (today.practisedToday || !today.streak) return;
+  // The journal is on the phone, not on the server: the page leaves its facts here (src/lib/pwa.ts).
+  const kept = await meta.match("journal");
+  if (!kept) return;
+  const facts = await kept.json();
+  const days = new Set(facts.practised);
+  if (days.has(day)) return;
+  // Days in a row up to yesterday — the streak lost at midnight.
+  const key = (ms) => new Date(ms + 7 * 3_600_000).toISOString().slice(0, 10);
+  let streak = 0;
+  for (let at = Date.parse(`${day}T12:00:00+07:00`) - 86_400_000; days.has(key(at)); at -= 86_400_000) streak++;
+  if (!streak) return;
   const left = 24 - bkk.getHours();
+  const word = facts.words[day];
+  const medal = facts.medals.includes(streak + 1) ? `ฝึกวันนี้รับเหรียญ ${streak + 1} วันติด` : "ใช้เวลาไม่ถึง 2 นาที";
   await meta.put("evening-sent", new Response(day));
   await show({
-    title: `อย่าเพิ่งเสียวันติด ${today.streak} วัน`,
-    body: `ยังไม่ได้ฝึก “${today.word.word}” อีก ${left} ชม. ถึงเที่ยงคืน · ${today.nextMedal && today.nextMedal.left === 1 ? `ฝึกวันนี้รับเหรียญ ${today.nextMedal.days} วันติด` : "ใช้เวลาไม่ถึง 2 นาที"}`,
+    title: `อย่าเพิ่งเสียวันติด ${streak} วัน`,
+    body: `${word ? `ยังไม่ได้ฝึก “${word}”` : "ยังไม่ได้ฝึกคำของวันนี้"} อีก ${left} ชม. ถึงเที่ยงคืน · ${medal}`,
     tag: "evening-streak",
     url: `${scope}practice`,
   });

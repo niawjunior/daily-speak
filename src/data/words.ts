@@ -1,10 +1,5 @@
-import type { api } from "@/lib/api";
-
-// The shapes of the API's answers, and the words for them on screen.
-type Data<T extends (...a: never[]) => Promise<{ data: unknown }>> = Exclude<NonNullable<Awaited<ReturnType<T>>["data"]>, { error: string }>;
-export type Today = Data<typeof api.today.get>;
-export type WordCard = Today["word"];
-export type Progress = Data<typeof api.progress.get>;
+// The words on screen for the journal's data (src/lib/journal.ts), and its shapes.
+export type { Progress, Today, WordCard } from "@/lib/journal";
 
 export const categories = {
   home: "ในบ้าน",
@@ -17,7 +12,7 @@ export const categories = {
 
 export const levels = { A1: "เริ่มต้น", A2: "พื้นฐาน", B1: "กลาง" } as const;
 
-// A day as "2026-11-02" — Eden turns date strings into Dates on the way in, so take either.
+// A day as "2026-11-02" — a Date taken as well.
 export const isoDay = (v: string | Date) => (typeof v === "string" ? v : v.toISOString()).slice(0, 10);
 // Noon in Bangkok on that day, so the day never shifts with the phone's time zone.
 export const dayDate = (v: string | Date) => new Date(`${isoDay(v)}T12:00:00+07:00`);

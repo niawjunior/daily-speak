@@ -1,21 +1,19 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
-import { toast } from "vue-sonner";
-import { ChevronRight, RotateCcw, Search, Volume2 } from "@lucide/vue";
+import { computed, ref } from "vue";
+import { ChevronRight, Search, Volume2 } from "@lucide/vue";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
 import { categories, scoreLook, thaiDate, toneClass, type WordCard } from "@/data/words";
-import { api } from "@/lib/api";
+import { wordsOf } from "@/lib/journal";
 import { settings } from "@/lib/settings";
 import { say } from "@/lib/speech";
 
 type Filter = keyof typeof categories | "all" | "review";
-const words = ref<WordCard[] | null>(null);
+// Every word received so far, from the journal on this phone.
+const words = computed(wordsOf);
 const query = ref("");
 const filter = ref<Filter>("all");
-const failed = ref(false);
 
 const filters = computed(() => [
   { key: "all" as Filter, label: "ทั้งหมด" },
@@ -25,23 +23,13 @@ const filters = computed(() => [
 const needsReview = (w: WordCard) => w.score === null || w.score < 90 || !w.done;
 const shown = computed(() => {
   const q = query.value.trim().toLowerCase();
-  return (words.value ?? []).filter(
+  return words.value.filter(
     (w) =>
       (filter.value === "all" || (filter.value === "review" ? needsReview(w) : w.category === filter.value)) &&
       (!q || `${w.word} ${w.meaning}`.toLowerCase().includes(q)),
   );
 });
 
-async function load(): Promise<void> {
-  failed.value = false;
-  const { data, error } = await api.words.get();
-  if (error) {
-    failed.value = true;
-    return void toast.error("โหลดคลังคำไม่ได้ — ลองอีกครั้ง");
-  }
-  words.value = data;
-}
-onMounted(load);
 </script>
 
 <template>
@@ -49,7 +37,7 @@ onMounted(load);
     <div class="flex flex-col gap-1">
       <h1 class="text-2xl font-semibold">คลังคำของฉัน</h1>
       <p class="text-sm text-muted-foreground">
-        ได้รับแล้ว {{ (words?.length ?? 0).toLocaleString("th-TH") }} คำ · ฝึกครบ {{ (words?.filter((w) => w.done).length ?? 0).toLocaleString("th-TH") }} คำ
+        ได้รับแล้ว {{ words.length.toLocaleString("th-TH") }} คำ · ฝึกครบ {{ words.filter((w) => w.done).length.toLocaleString("th-TH") }} คำ · วันละ 1 คำ
       </p>
     </div>
 
@@ -64,12 +52,7 @@ onMounted(load);
       </Button>
     </div>
 
-    <div v-if="failed" class="flex flex-col items-center gap-3 rounded-2xl border bg-card p-8 text-center">
-      <p class="text-sm text-muted-foreground">โหลดคลังคำไม่ได้</p>
-      <Button variant="outline" class="h-11" @click="load"><RotateCcw /> ลองอีกครั้ง</Button>
-    </div>
-
-    <div v-else-if="words" class="flex flex-col gap-3">
+    <div class="flex flex-col gap-3">
       <div v-for="w in shown" :key="w.id" class="flex items-center gap-2 rounded-2xl border bg-card p-2 pl-4">
         <Button variant="ghost" size="icon-lg" class="size-10 shrink-0 rounded-full" :aria-label="`ฟังคำว่า ${w.word}`" @click="say(w.word, settings.accent, settings.rate)">
           <Volume2 class="size-5 text-primary" />
@@ -94,10 +77,6 @@ onMounted(load);
         <p class="text-sm text-muted-foreground">ไม่พบคำที่ตรงกับ “{{ query || filters.find((f) => f.key === filter)?.label }}”</p>
         <Button variant="outline" class="h-11" @click="query = ''; filter = 'all'">ดูคำทั้งหมด</Button>
       </div>
-    </div>
-
-    <div v-else class="flex flex-col gap-3">
-      <Skeleton v-for="i in 5" :key="i" class="h-24 rounded-2xl" />
     </div>
   </section>
 </template>

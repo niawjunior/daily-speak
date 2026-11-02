@@ -1,47 +1,39 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
-import { toast } from "vue-sonner";
-import { Award, BookOpen, Flame, RotateCcw, Target, Volume2 } from "@lucide/vue";
+import { computed, ref } from "vue";
+import { Award, BookOpen, Flame, Target, Volume2 } from "@lucide/vue";
 import MedalBadge from "@/components/MedalBadge.vue";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { dayDate, isoDay, thaiDate, toneClass, type Progress } from "@/data/words";
-import { api } from "@/lib/api";
+import { dayDate, isoDay, thaiDate, toneClass } from "@/data/words";
+import { progressOf } from "@/lib/journal";
 import { settings } from "@/lib/settings";
 import { say } from "@/lib/speech";
 
-const progress = ref<Progress | null>(null);
-const failed = ref(false);
-const picked = ref<number | null>(null);
+// From the journal on this phone.
+const progress = computed(progressOf);
+// The day picked on the bars — today first.
+const picked = ref<number | null>(6);
 
 const tiles = computed(() =>
-  progress.value
+  progress.value.tries
     ? [
         { icon: Flame, label: "ฝึกต่อเนื่อง", value: `${progress.value.streak.current.toLocaleString("th-TH")} วัน`, note: `สูงสุด ${progress.value.streak.best.toLocaleString("th-TH")} วัน` },
         { icon: Target, label: "ความแม่นยำเฉลี่ย", value: `${progress.value.score}%`, note: `จาก ${progress.value.tries.toLocaleString("th-TH")} ครั้งที่พูด` },
         { icon: BookOpen, label: "คำที่ฝึกแล้ว", value: `${progress.value.words.toLocaleString("th-TH")} คำ`, note: `${progress.value.sentences.toLocaleString("th-TH")} ประโยค` },
         { icon: Award, label: "พูดถูกทุกคำ", value: `${progress.value.perfect.toLocaleString("th-TH")} ครั้ง`, note: "ได้ 100%" },
       ]
-    : [],
+    : [
+        { icon: Flame, label: "ฝึกต่อเนื่อง", value: "0 วัน", note: "เริ่มนับเมื่อฝึกประโยคแรก" },
+        { icon: Target, label: "ความแม่นยำเฉลี่ย", value: "—", note: "ยังไม่ได้พูด" },
+        { icon: BookOpen, label: "คำที่ฝึกแล้ว", value: "0 คำ", note: "0 ประโยค" },
+        { icon: Award, label: "พูดถูกทุกคำ", value: "0 ครั้ง", note: "ได้ 100%" },
+      ],
 );
-const medalTotal = computed(() => progress.value?.medals.reduce((s, m) => s + m.count, 0) ?? 0);
-const peak = computed(() => Math.max(1, ...(progress.value?.last7.map((d) => d.tries) ?? [1])));
-const weekTries = computed(() => progress.value?.last7.reduce((s, d) => s + d.tries, 0) ?? 0);
+const medalTotal = computed(() => progress.value.medals.reduce((s, m) => s + m.count, 0));
+const peak = computed(() => Math.max(1, ...progress.value.last7.map((d) => d.tries)));
+const weekTries = computed(() => progress.value.last7.reduce((s, d) => s + d.tries, 0));
 const weekdays = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
 const dow = (v: string | Date) => dayDate(v).getDay();
-
-async function load(): Promise<void> {
-  failed.value = false;
-  const { data, error } = await api.progress.get();
-  if (error) {
-    failed.value = true;
-    return void toast.error("โหลดสถิติไม่ได้ — ลองอีกครั้ง");
-  }
-  progress.value = data;
-  picked.value = data.last7.length - 1;
-}
-onMounted(load);
 </script>
 
 <template>
@@ -51,12 +43,7 @@ onMounted(load);
       <p class="text-sm text-muted-foreground">ดูว่าพูดได้แม่นขึ้นแค่ไหน และคำไหนที่ยังพลาดบ่อย</p>
     </div>
 
-    <div v-if="failed" class="flex flex-col items-center gap-3 rounded-2xl border bg-card p-8 text-center">
-      <p class="text-sm text-muted-foreground">โหลดสถิติไม่ได้</p>
-      <Button variant="outline" class="h-11" @click="load"><RotateCcw /> ลองอีกครั้ง</Button>
-    </div>
-
-    <template v-else-if="progress">
+    <template v-if="progress">
       <div class="grid grid-cols-2 gap-3">
         <div v-for="t in tiles" :key="t.label" class="flex flex-col gap-1 rounded-2xl border bg-card p-4">
           <div class="flex items-center gap-2 text-xs text-muted-foreground"><component :is="t.icon" class="size-4 text-primary" /> {{ t.label }}</div>
@@ -138,7 +125,8 @@ onMounted(load);
       <!-- Words missed most -->
       <div class="flex flex-col gap-3 rounded-2xl border bg-card p-4">
         <h2 class="text-base font-semibold">คำที่พลาดบ่อย</h2>
-        <p v-if="!progress.tough.length" class="text-sm text-muted-foreground">ยังไม่มีคำที่พลาด — พูดถูกทุกคำมาตลอด</p>
+        <p v-if="!progress.tries" class="text-sm text-muted-foreground">ยังไม่ได้ฝึก — คำที่พูดพลาดจะมาอยู่ตรงนี้ ให้กดฟังซ้ำได้</p>
+        <p v-else-if="!progress.tough.length" class="text-sm text-muted-foreground">ยังไม่มีคำที่พลาด — พูดถูกทุกคำมาตลอด</p>
         <div v-for="(t, i) in progress.tough" :key="t.word" class="flex items-center gap-3">
           <span class="w-5 text-sm text-muted-foreground tabular-nums">{{ (i + 1).toLocaleString("th-TH") }}</span>
           <span class="flex-1 font-semibold">{{ t.word }}</span>
@@ -148,11 +136,6 @@ onMounted(load);
           </Button>
         </div>
       </div>
-    </template>
-
-    <template v-else>
-      <div class="grid grid-cols-2 gap-3"><Skeleton v-for="i in 4" :key="i" class="h-24 rounded-2xl" /></div>
-      <Skeleton class="h-56 rounded-2xl" />
     </template>
   </section>
 </template>

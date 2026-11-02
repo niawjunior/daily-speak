@@ -1,6 +1,6 @@
 // New words by an LLM through Vercel AI Gateway (OpenAI-compatible) — and, with no key, from a reserve of ready-made
 // words labelled จำลอง, so the demo works the same after the key is revoked.
-import type { Category, Sentence, Word } from "./data";
+import type { Category, Sentence, Word } from "../src/data/bank";
 
 export const GATEWAY = "https://ai-gateway.vercel.sh/v1";
 export const MODELS = [

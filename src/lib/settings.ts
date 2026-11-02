@@ -1,12 +1,8 @@
 import { useLocalStorage } from "@vueuse/core";
-import { ref } from "vue";
-
-// Goes up when the demo starts again — the page on screen is drawn afresh.
-export const demoRound = ref(0);
 
 // The learner's choices, kept on this phone.
 export const settings = useLocalStorage("daily-speak:settings", {
-  // The name in the greeting — empty: the demo's sample learner (server/data.ts).
+  // The name in the greeting — empty: no name (in the demo: its sample learner, src/lib/journal.ts).
   name: "",
   accent: "en-US" as "en-US" | "en-GB",
   rate: 0.9,

@@ -1,7 +1,7 @@
 import { useLocalStorage } from "@vueuse/core";
 import { ref, watch } from "vue";
 import { toast } from "vue-sonner";
-import { api } from "@/lib/api";
+import { reminderFacts, todayOf } from "@/lib/journal";
 import { settings } from "@/lib/settings";
 
 // Daily Speak as an app on the phone: installed on the home screen, and reminders as the phone's own notifications.
@@ -87,9 +87,8 @@ const localDay = (d = new Date()) => d.toLocaleDateString("en-CA");
 
 // The evening reminder, from today's state: null on a day already practised — unless asked for as a sample, as it
 // would come at `sampleAt`.
-export async function eveningNote(sampleAt?: string): Promise<Note | null> {
-  const { data } = await api.today.get();
-  if (!data) return null;
+export function eveningNote(sampleAt?: string): Note | null {
+  const data = todayOf();
   if (!sampleAt && (data.practisedToday || !data.streak)) return null;
   const hour = sampleAt ? Math.floor(minutes(sampleAt) / 60) : new Date().getHours();
   const left = Math.max(1, 24 - hour);
@@ -102,9 +101,9 @@ export async function eveningNote(sampleAt?: string): Promise<Note | null> {
   };
 }
 
-async function morningNote(): Promise<Note | null> {
-  const { data } = await api.today.get();
-  if (!data || data.practisedToday) return null;
+function morningNote(): Note | null {
+  const data = todayOf();
+  if (data.practisedToday) return null;
   return { title: "คำใหม่ของวันนี้มาแล้ว", body: `“${data.word.word}” — ${data.word.meaning} · แตะเพื่อฟังแล้วพูดตาม`, to: "/", tag: "morning-word" };
 }
 
@@ -116,28 +115,29 @@ async function check(): Promise<void> {
   const day = localDay(now);
   const s = settings.value;
   if (s.evening && at >= minutes(s.eveningAt) && sent.value.evening !== day) {
-    const note = await eveningNote();
+    const note = eveningNote();
     sent.value.evening = day;
     if (note) await notify(note);
   } else if (s.remind && at >= minutes(s.remindAt) && at < minutes(s.eveningAt) && sent.value.morning !== day) {
     sent.value.morning = day;
     // The morning word goes only to the phone — no need to cover the page with it.
-    const note = await morningNote();
+    const note = morningNote();
     if (note) await notify(note, true);
   }
 }
 
-// The evening time, kept where the service worker can read it for its own check on the phone.
-async function sharePrefs(): Promise<void> {
+// The evening time and the facts of the journal, kept where the service worker can read them for its own check.
+async function share(name: string, value: unknown): Promise<void> {
   if (!("caches" in window)) return;
   const meta = await caches.open("daily-speak-meta");
-  await meta.put("reminder", new Response(JSON.stringify({ evening: settings.value.evening, eveningAt: settings.value.eveningAt })));
+  await meta.put(name, new Response(JSON.stringify(value)));
 }
 
 export async function startApp(): Promise<void> {
   window.setTimeout(check, 4000);
   window.setInterval(check, 60_000);
-  watch(() => [settings.value.evening, settings.value.eveningAt], sharePrefs, { immediate: true });
+  watch(() => ({ evening: settings.value.evening, eveningAt: settings.value.eveningAt }), (prefs) => share("reminder", prefs), { immediate: true });
+  watch(reminderFacts, (facts) => share("journal", facts), { immediate: true });
   if (!("serviceWorker" in navigator)) return;
   try {
     const reg = await navigator.serviceWorker.register(`${BASE}sw.js`, { scope: BASE });

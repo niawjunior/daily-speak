@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { scoreLook, toneClass, type WordCard } from "@/data/words";
-import { api } from "@/lib/api";
+import { addAttempt, todayOf, wordOf } from "@/lib/journal";
 import { cleanWord, grade, scoreOf } from "@/lib/match";
 import { settings } from "@/lib/settings";
 import { canListen, listenGoogle, listenSim, say, stopSpeaking, type Listening } from "@/lib/speech";
@@ -48,18 +48,13 @@ const verdict = computed(() =>
   score.value === 100 ? "ถูกทุกคำ ออกเสียงชัดมาก" : score.value >= 80 ? "เกือบเป๊ะแล้ว — ลองคำสีแดงอีกครั้ง" : score.value >= 50 ? "ดีขึ้นแล้ว — ฟังตัวอย่างแล้วพูดใหม่" : "ลองฟังตัวอย่างช้าๆ แล้วพูดตามทีละคำ",
 );
 
-async function load(): Promise<void> {
+function load(): void {
   stop();
   word.value = null;
   phase.value = "idle";
-  let id = Number(route.params.id);
-  if (!id) {
-    const { data } = await api.today.get();
-    if (!data) return void toast.error("โหลดคำของวันนี้ไม่ได้ — ลองอีกครั้ง");
-    id = data.word.id;
-  }
-  const { data, error } = await api.words({ id }).get();
-  if (error || !data || "error" in data) {
+  // A word received already (from the journal on this phone); today's when none is asked for.
+  const data = wordOf(Number(route.params.id) || todayOf().word.id);
+  if (!data) {
     toast.error("ไม่พบคำนี้ในคลังคำ");
     return void router.replace("/words");
   }
@@ -107,7 +102,7 @@ function start(): void {
   listening = mode.value === "google" ? listenGoogle(opts) : listenSim(opts);
 }
 
-async function finish(): Promise<void> {
+function finish(): void {
   listening = null;
   if (phase.value !== "listening" || !word.value) return;
   if (!transcript.value.trim()) {
@@ -120,12 +115,11 @@ async function finish(): Promise<void> {
   const i = index.value;
   tries.value[i] = (tries.value[i] ?? 0) + 1;
   session.value[i] = Math.max(session.value[i] ?? 0, score.value);
-  const { data } = await api.attempts.post({ wordId: word.value.id, sentence: i, score: score.value, missed: missed.value.map((m) => cleanWord(m.text)) });
-  if (data) {
-    streak.value = data.streak;
-    if (data.medal) medal.value = data.medal;
-    word.value.best[i] = Math.max(word.value.best[i] ?? 0, score.value);
-  } else toast.error("บันทึกผลไม่สำเร็จ — ผลครั้งนี้ยังแสดงอยู่");
+  // Kept on this phone — the streak and a medal come back at once.
+  const saved = addAttempt({ wordId: word.value.id, sentence: i, score: score.value, missed: missed.value.map((m) => cleanWord(m.text)) });
+  streak.value = saved.streak;
+  if (saved.medal) medal.value = saved.medal;
+  word.value.best[i] = Math.max(word.value.best[i] ?? 0, score.value);
 }
 
 function again(): void {

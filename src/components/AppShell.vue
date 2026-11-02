@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { AudioLines } from "@lucide/vue";
-import { useRoute } from "vue-router";
+import { AudioLines, Presentation } from "@lucide/vue";
+import { useRoute, useRouter } from "vue-router";
+import { toast } from "vue-sonner";
 import SettingsSheet from "@/components/SettingsSheet.vue";
+import { leaveDemo, mode } from "@/lib/journal";
 import { pages } from "@/router";
 
 // The demo's name, said once — on the bar and in the browser's tab.
@@ -9,6 +11,12 @@ const appName = "Daily Speak";
 document.title = `${appName} · ฝึกพูดอังกฤษวันละคำ`;
 
 const route = useRoute();
+const router = useRouter();
+function endDemo(): void {
+  leaveDemo();
+  toast.success("ออกจากเดโมแล้ว — กลับมาที่ข้อมูลการฝึกของคุณ");
+  void router.replace("/");
+}
 const active = (to: string) => (to === "/" ? route.path === "/" : route.path.startsWith(to));
 </script>
 
@@ -22,6 +30,12 @@ const active = (to: string) => (to === "/" ? route.path === "/" : route.path.sta
             <span class="font-heading text-lg font-semibold">{{ appName }}</span>
           </RouterLink>
           <div class="ml-auto"><SettingsSheet /></div>
+        </div>
+        <!-- Sample data on screen: said plainly, with the way back -->
+        <div v-if="mode === 'demo'" class="flex items-center gap-2 border-t border-accent/50 bg-accent/20 px-4 py-1.5 text-xs">
+          <Presentation class="size-4 shrink-0 text-primary" />
+          <span class="flex-1">โหมดเดโม · ข้อมูลตัวอย่างของมายด์</span>
+          <button type="button" class="font-semibold text-primary underline-offset-4 hover:underline" @click="endDemo">ออกจากเดโม</button>
         </div>
       </header>
       <main class="flex-1 px-4 pt-4 pb-28">

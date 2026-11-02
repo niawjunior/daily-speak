@@ -1,52 +1,45 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { toast } from "vue-sonner";
-import { AlarmClock, ArrowRight, CircleCheck, Download, Flame, Lightbulb, LoaderCircle, Medal, Mic, RotateCcw, Sparkles, Volume2 } from "@lucide/vue";
+import { AlarmClock, ArrowRight, CircleCheck, Download, Flame, Lightbulb, LoaderCircle, Medal, Mic, Sparkles, Volume2 } from "@lucide/vue";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { categories, levels, scoreLook, thaiDate, toneClass, type Today, type WordCard } from "@/data/words";
-import { api } from "@/lib/api";
+import { categories, levels, scoreLook, thaiDate, toneClass } from "@/data/words";
 import { aiTriedOn, makeTodayWord, modelName } from "@/lib/ai";
+import { todayOf, wordsOf } from "@/lib/journal";
 import { preloadVoice, voiceLoading } from "@/lib/voice";
 import { install, installed, installHidden } from "@/lib/pwa";
 import { settings } from "@/lib/settings";
 import { say } from "@/lib/speech";
 
-const today = ref<Today | null>(null);
-const recent = ref<WordCard[]>([]);
-const failed = ref(false);
+// From the journal on this phone — drawn again as soon as it changes.
+const today = computed(todayOf);
+const recent = computed(() => wordsOf().slice(1, 4));
 const making = ref(false);
 
 const hour = new Date().getHours();
 const greeting = hour < 12 ? "สวัสดีตอนเช้า" : hour < 17 ? "สวัสดีตอนบ่าย" : "สวัสดีตอนเย็น";
-const word = computed(() => today.value?.word);
-const said = computed(() => word.value?.best.filter((b) => b !== null).length ?? 0);
+const word = computed(() => today.value.word);
+const said = computed(() => word.value.best.filter((b) => b !== null).length);
 const icon = `${import.meta.env.BASE_URL}icon-192.png`;
 const [eh = 20, em = 0] = settings.value.eveningAt.split(":").map(Number);
-const atRisk = computed(() => !!today.value && !today.value.practisedToday && today.value.streak > 0 && hour * 60 + new Date().getMinutes() >= eh * 60 + em);
+const atRisk = computed(() => !today.value.practisedToday && today.value.streak > 0 && hour * 60 + new Date().getMinutes() >= eh * 60 + em);
 const hoursLeft = Math.max(1, 24 - hour);
-const cta = computed(() => (word.value?.done ? "ฝึกซ้ำอีกรอบ" : said.value ? "ฝึกต่อ" : "เริ่มฝึกพูด"));
+const cta = computed(() => (word.value.done ? "ฝึกซ้ำอีกรอบ" : said.value ? "ฝึกต่อ" : "เริ่มฝึกพูด"));
+
+const preload = () => void preloadVoice([word.value.word, ...word.value.sentences.map((s) => s.en)]);
 
 async function load(): Promise<void> {
-  failed.value = false;
-  const [t, w] = await Promise.all([api.today.get(), api.words.get()]);
-  if (t.error || w.error) {
-    failed.value = true;
-    return void toast.error("โหลดคำของวันนี้ไม่ได้ — ลองอีกครั้ง");
-  }
-  today.value = t.data;
-  recent.value = w.data.slice(1, 4);
-  void preloadVoice([t.data.word.word, ...t.data.word.sentences.map((s) => s.en)]);
+  preload();
   // The first visit of the day with "สร้างคำใหม่ด้วย AI ทุกวัน" on: AI makes today's word.
-  if (settings.value.aiDaily && !t.data.word.source && aiTriedOn.value !== t.data.date) {
-    aiTriedOn.value = t.data.date;
+  if (settings.value.aiDaily && !word.value.source && aiTriedOn.value !== today.value.date) {
+    aiTriedOn.value = today.value.date;
     making.value = true;
     const res = await makeTodayWord();
     making.value = false;
     if (!res.word) return void toast.error(`${res.error} — วันนี้ใช้คำจากคลังไปก่อน`);
     toast.success(`AI สร้างคำของวันนี้ให้แล้ว: ${res.word.word}`);
-    await load();
+    preload();
   }
 }
 onMounted(load);
@@ -54,16 +47,11 @@ onMounted(load);
 
 <template>
   <section class="flex flex-col gap-6">
-    <div v-if="failed" class="flex flex-col items-center gap-3 rounded-2xl border bg-card p-8 text-center">
-      <p class="text-sm text-muted-foreground">โหลดคำของวันนี้ไม่ได้</p>
-      <Button variant="outline" class="h-11" @click="load"><RotateCcw /> ลองอีกครั้ง</Button>
-    </div>
-
-    <template v-else-if="today && word">
+    <template v-if="word">
       <div class="flex items-start justify-between gap-4">
         <div class="flex flex-col gap-1">
           <p class="text-sm text-muted-foreground">{{ thaiDate(today.date, { weekday: "long", day: "numeric", month: "long", year: "numeric" }) }}</p>
-          <h1 class="text-2xl font-semibold">{{ greeting }} {{ settings.name.trim() || today.learner.name }}</h1>
+          <h1 class="text-2xl font-semibold">{{ [greeting, today.name].filter(Boolean).join(" ") }}</h1>
         </div>
         <div class="flex shrink-0 items-center gap-1 rounded-full border border-accent/50 bg-accent/20 px-3 py-1.5 text-sm font-semibold">
           <Flame class="size-4 text-primary" /> {{ today.streak.toLocaleString("th-TH") }} วันติด
@@ -184,7 +172,10 @@ onMounted(load);
           <h3 class="text-lg font-semibold">คำของวันก่อนๆ</h3>
           <RouterLink to="/words" class="flex items-center gap-1 text-sm font-medium text-primary">ดูทั้งหมด <ArrowRight class="size-4" /></RouterLink>
         </div>
-        <div class="grid grid-cols-3 gap-3">
+        <p v-if="!recent.length" class="rounded-2xl border border-dashed p-4 text-sm text-muted-foreground">
+          ยังไม่มีคำของวันก่อนๆ — พรุ่งนี้จะได้คำใหม่ และคำของวันนี้จะมาอยู่ตรงนี้
+        </p>
+        <div v-else class="grid grid-cols-3 gap-3">
           <RouterLink v-for="w in recent" :key="w.id" :to="`/practice/${w.id}`" class="flex flex-col gap-1 rounded-2xl border bg-card p-3 transition-colors hover:border-primary/40">
             <span class="text-xs text-muted-foreground">{{ thaiDate(w.date) }}</span>
             <span class="truncate font-semibold">{{ w.word }}</span>
@@ -193,13 +184,6 @@ onMounted(load);
           </RouterLink>
         </div>
       </div>
-    </template>
-
-    <template v-else>
-      <Skeleton class="h-12 w-2/3" />
-      <Skeleton class="h-64 rounded-3xl" />
-      <Skeleton class="h-20 rounded-2xl" />
-      <Skeleton class="h-40 rounded-2xl" />
     </template>
   </section>
 </template>

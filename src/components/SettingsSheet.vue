@@ -2,7 +2,7 @@
 import { computed, ref } from "vue";
 import { toast } from "vue-sonner";
 import { useRouter } from "vue-router";
-import { Bell, BellRing, ChevronRight, Download, RotateCcw, Settings, Smartphone, Sparkles } from "@lucide/vue";
+import { Bell, BellRing, ChevronRight, Download, Presentation, RotateCcw, Settings, Smartphone, Sparkles } from "@lucide/vue";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,9 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { toneClass } from "@/data/words";
-import { api } from "@/lib/api";
+import { leaveDemo, mode, startDemo } from "@/lib/journal";
 import { allow, eveningNote, install, installed, notify, permission } from "@/lib/pwa";
-import { demoRound, settings } from "@/lib/settings";
+import { settings } from "@/lib/settings";
 import { canListen, say } from "@/lib/speech";
 
 const permissionText = computed(() =>
@@ -27,7 +27,7 @@ const permissionText = computed(() =>
 
 // A sample of the evening reminder, as it would come at the time picked.
 async function tryEvening(): Promise<void> {
-  const note = await eveningNote(draft.value.eveningAt);
+  const note = eveningNote(draft.value.eveningAt);
   if (!note) return void toast.error("ส่งแจ้งเตือนไม่สำเร็จ — ลองอีกครั้ง");
   open.value = false;
   const where = await notify(note);
@@ -60,13 +60,13 @@ function save(): void {
   const when = [d.remind && `เตือนคำใหม่ ${d.remindAt} น.`, d.evening && `เตือนตอนค่ำ ${d.eveningAt} น. ถ้ายังไม่ได้ฝึก`].filter(Boolean).join(" · ");
   toast.success(when ? `บันทึกแล้ว — ${when}` : "บันทึกการตั้งค่าแล้ว");
 }
-async function reset(): Promise<void> {
-  const { error } = await api.reset.post();
-  if (error) return void toast.error("เริ่มเดโมใหม่ไม่สำเร็จ — ลองอีกครั้ง");
+// The demo: a sample learner on a journal of its own — the learner's own stays as it is.
+async function demo(on: boolean): Promise<void> {
+  if (on) startDemo();
+  else leaveDemo();
   open.value = false;
-  toast.success("เริ่มเดโมใหม่แล้ว — คำของวันนี้รอให้ฝึกอีกครั้ง");
+  toast.success(on ? "เริ่มเดโมแล้ว — แสดงข้อมูลตัวอย่างของมายด์ที่ฝึกมา 19 วัน" : "ออกจากเดโมแล้ว — กลับมาที่ข้อมูลการฝึกของคุณ");
   await router.replace("/");
-  demoRound.value++;
 }
 </script>
 
@@ -83,7 +83,7 @@ async function reset(): Promise<void> {
       <div class="flex flex-col gap-6 px-4">
         <div class="flex flex-col gap-2">
           <Label for="name">ชื่อของคุณ</Label>
-          <Input id="name" v-model="draft.name" placeholder="มายด์" maxlength="20" autocomplete="nickname" class="h-11" />
+          <Input id="name" v-model="draft.name" placeholder="ชื่อเล่นของคุณ" maxlength="20" autocomplete="nickname" class="h-11" />
           <p class="text-xs text-muted-foreground">ใช้ทักทายในหน้าวันนี้ · เก็บไว้ในเครื่องนี้เท่านั้น</p>
         </div>
         <div class="flex flex-col gap-2">
@@ -185,10 +185,29 @@ async function reset(): Promise<void> {
             </div>
           </div>
         </div>
+        <!-- The demo: sample data on a journal of its own -->
+        <div class="flex flex-col gap-2">
+          <Label>โหมดเดโม</Label>
+          <div class="flex flex-col gap-3 rounded-xl border bg-card p-4" :class="mode === 'demo' ? 'border-accent/60 bg-accent/15' : ''">
+            <div class="flex items-start gap-3">
+              <Presentation class="mt-0.5 size-5 shrink-0 text-primary" />
+              <div class="flex flex-col gap-0.5">
+                <span class="text-sm font-medium">{{ mode === "demo" ? "กำลังแสดงข้อมูลตัวอย่าง" : "ข้อมูลตัวอย่างสำหรับนำเสนอ" }}</span>
+                <span class="text-xs text-muted-foreground">
+                  {{ mode === "demo" ? "ผู้เรียนตัวอย่างชื่อมายด์ ฝึกมา 19 วัน — ที่ฝึกตอนนี้ไม่ปนกับข้อมูลของคุณ" : "ผู้เรียนที่ฝึกมา 19 วัน ฝึกวันนี้ได้เหรียญ 7 วันติดทันที — ข้อมูลของคุณยังอยู่ครบ" }}
+                </span>
+              </div>
+            </div>
+            <div v-if="mode === 'demo'" class="grid grid-cols-2 gap-2">
+              <Button variant="outline" class="h-10" @click="demo(true)"><RotateCcw /> เริ่มเดโมใหม่</Button>
+              <Button class="h-10" @click="demo(false)">ออกจากเดโม</Button>
+            </div>
+            <Button v-else variant="outline" class="h-10 w-full" @click="demo(true)"><Presentation /> เริ่มเดโม</Button>
+          </div>
+        </div>
       </div>
       <SheetFooter class="gap-2 pb-6">
         <Button class="h-11 w-full" @click="save">บันทึกการตั้งค่า</Button>
-        <Button variant="ghost" class="h-11 w-full text-muted-foreground" @click="reset"><RotateCcw /> เริ่มเดโมใหม่ — ล้างผลที่ฝึกวันนี้</Button>
       </SheetFooter>
     </SheetContent>
   </Sheet>

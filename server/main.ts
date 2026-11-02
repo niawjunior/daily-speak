@@ -9,6 +9,8 @@ const server = new Elysia().use(app);
 if (process.env.SERVE_PAGE !== "0") {
   // A file of the built page, else the page itself — so a link straight to /items opens it (the router takes over).
   server.get("/*", async ({ params }) => {
+    // An API path the server does not have is not a page.
+    if ((params["*"] ?? "").startsWith("api/")) return new Response("Not found", { status: 404 });
     const path = resolve(DIST, params["*"] ?? "");
     const file = Bun.file(path);
     if (path.startsWith(DIST + sep) && (await file.exists())) return file;

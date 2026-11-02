@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { categories, levels, thaiDate } from "@/data/words";
 import { makeTodayWord, masked, modelName } from "@/lib/ai";
 import { api } from "@/lib/api";
+import { aiWordsOf } from "@/lib/journal";
 import { settings } from "@/lib/settings";
 import { sayDevice, stopSpeaking } from "@/lib/speech";
 import { sayAi, voiceLoading } from "@/lib/voice";
@@ -26,6 +27,8 @@ const testing = ref(false);
 const test = ref<{ ok: true; ms: number } | { ok: false; error: string } | null>(null);
 const making = ref(false);
 const made = ref<Made | null>(null);
+// The words AI made for this phone, newest first.
+const madeSoFar = computed(aiWordsOf);
 
 const mode = computed(() => (settings.value.aiKey ? "key" : info.value?.serverKey ? "server" : "sim"));
 
@@ -83,7 +86,6 @@ async function makeNow(): Promise<void> {
   if (!res.word) return void toast.error(res.error);
   made.value = res.word;
   toast.success(`ได้คำใหม่ของวันนี้แล้ว: ${res.word.word}`);
-  load();
 }
 </script>
 
@@ -266,8 +268,8 @@ async function makeNow(): Promise<void> {
     <!-- Words made so far -->
     <div class="flex flex-col gap-3 rounded-2xl border bg-card p-4">
       <h2 class="text-base font-semibold">คำที่ AI สร้างแล้ว</h2>
-      <p v-if="info && !info.made.length" class="text-sm text-muted-foreground">ยังไม่มี — กด “สร้างคำของวันนี้ใหม่ตอนนี้” เพื่อเริ่ม</p>
-      <div v-for="w in info?.made ?? []" :key="w.id" class="flex items-center gap-3 rounded-xl bg-background p-3">
+      <p v-if="!madeSoFar.length" class="text-sm text-muted-foreground">ยังไม่มี — กด “สร้างคำของวันนี้ใหม่ตอนนี้” เพื่อเริ่ม</p>
+      <div v-for="w in madeSoFar" :key="w.id" class="flex items-center gap-3 rounded-xl bg-background p-3">
         <div class="flex min-w-0 flex-1 flex-col">
           <span class="flex items-center gap-2 font-semibold">{{ w.word }}<Badge v-if="w.today" variant="outline" class="text-[11px]">คำของวันนี้</Badge></span>
           <span class="truncate text-xs text-muted-foreground">{{ w.meaning }} · หมวด{{ categories[w.category] }} · {{ w.level }}</span>
