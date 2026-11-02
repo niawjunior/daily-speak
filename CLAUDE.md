@@ -1,0 +1,52 @@
+# ทำ app สำหรับฝึกภาษาอังกฤษ สำหรับใช้บน mobile…
+
+<!-- sup-plana:brief — written by the sup-plana runner from the app's page; edit it there, not here -->
+- **What it is:** เดโม — a DEMO for a client meeting: polished, every step of the story the owner will walk through works, believable data; breadth over depth
+- **For:** (not said) · **its owner on sup-plana:** เนี้ยว
+- **Started from:** vue-elysia (Vue 3, Vite, Tailwind CSS 4, shadcn-vue, Elysia, Bun)
+
+### What is needed (from its owner, as they wrote it)
+ทำ app สำหรับฝึกภาษาอังกฤษ สำหรับใช้บน mobile อยากให้ random คำที่ใช้ในชีวิตประจำวัน วันละ 1 คำ พร้อมทั้ง ประโยคสั้นๆ ที่ให้เราพูดตาม แล้วใช้ google speech to text ในการเช็คว่าถูกมั้ย ถ้าไม่ถูก ให้บอกแบบ realtime ว่าคำไหนไม่ถูก ทำให้ ใช้งาน ux/ui ทันสมัย
+
+### Its theme — “คาเฟ่อบอุ่น”, chosen when it was made
+Build every page in it from the first version: these colours as the app's CSS variables (the page, cards and panels, buttons and links, a second colour, the text), these Google Fonts — a list is a stack: the first for Latin letters, the next for Thai — loaded once for the whole app. A ธีม its owner sends later replaces it.
+```json
+{"colors":{"text":"#2E2018","accent":"#D9A066","primary":"#8A5A3C","surface":"#F1E6D8","background":"#FBF7F2"},"fonts":{"body":"IBM Plex Sans Thai","heading":"Noto Serif Thai"}}
+```
+
+### Where it is deployed
+At `/app-mobile/` under the team's demo site — built with `BASE_PATH=/app-mobile/ bun run build`. Never write a link, an asset path or a fetch as an absolute `/…`: go through the router, `import.meta.env.BASE_URL` and the app's api client, so it works at `/` in dev and at `/app-mobile/` deployed.
+<!-- /sup-plana:brief -->
+
+## How this app is worked
+- Its owner asks for one change at a time on sup-plana; each request is one turn, and the runner keeps every turn as a
+  version (v1, v2 …). **Do not commit, branch, tag or push** — the runner does it when your turn ends.
+- End every turn with `bun run check` passing (typecheck + build). The runner runs it after you; if it fails you are
+  told the errors in the same turn.
+- Look at what you built before you say it is done: the `shot` tool (a picture on the app's page) or `browse`.
+- Keep the section **What we decided** at the end of this file current — the pages, the flow, choices made with the
+  owner. It is how the next session knows the app; a long chat is not.
+
+## Rules for a demo
+- Every word a person reads on screen is Thai unless the brief says otherwise; dates and numbers in th-TH.
+- Data is believable sample data in the client's own terms — never real people's data, real systems, real keys or
+  secrets; no call to an outside service unless the owner asks for one.
+- One look across every page; it works on a phone as well as a laptop.
+- Prefer the shadcn components already in `src/components/ui` and Tailwind utilities; add more components with the CLI
+  below rather than writing your own.
+- It may be deployed under a path (`/<name>/` on the team's demo site, built with `BASE_PATH=/<name>/`): never write an
+  absolute `/…` link, asset path or fetch — go through the router, `import.meta.env.BASE_URL` and the api client, which
+  already follow it.
+
+## Stack
+- The page: Vue 3 (`<script setup lang="ts">`) + Vite + TypeScript, Tailwind CSS 4, shadcn-vue (reka-ui) in
+  `src/components/ui`; icons from `@lucide/vue`; toasts with `vue-sonner`. Pages in `src/pages`, listed in
+  `src/router.ts`.
+- The API: Elysia on Bun in `server/app.ts`, every route under `/api`, its data in memory (`server/data.ts` — a restart
+  starts it again). The page calls it through Eden, typed from the server: `api.items.get()`,
+  `api.items({ id }).patch({ … })` (`src/lib/api.ts`). Its routes are listed at `/api/openapi`.
+- `bun run dev` runs both (scripts/dev.ts); `bun run start` serves the built page and the API on one port.
+- More components: `bunx --bun shadcn-vue@latest add <name>`.
+
+## What we decided
+- (nothing yet)

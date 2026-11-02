@@ -1,0 +1,4 @@
+{
+  "dev": "bun run dev",
+  "check": "bun run check"
+}

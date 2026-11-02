@@ -1,0 +1,39 @@
+{
+  "name": "app",
+  "type": "module",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "bun scripts/dev.ts",
+    "build": "vue-tsc -b && vite build",
+    "check": "vue-tsc -b && tsc -p server && vite build",
+    "start": "bun server/main.ts",
+    "preview": "bun run build && bun run start"
+  },
+  "dependencies": {
+    "@elysiajs/cors": "^1.4.2",
+    "@elysiajs/eden": "^1.4.9",
+    "@elysiajs/openapi": "^1.4.16",
+    "@lucide/vue": "^1.57.0",
+    "@vueuse/core": "^15.0.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "elysia": "^1.4.30",
+    "reka-ui": "^2.11.0",
+    "shadcn-vue": "^2.8.2",
+    "tailwind-merge": "^3.7.0",
+    "tw-animate-css": "^1.4.0",
+    "vue": "^3.5.13",
+    "vue-router": "^4.6.3",
+    "vue-sonner": "^2.0.9"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@types/bun": "^1.4.3",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.0",
+    "vue-tsc": "^2.2.0"
+  }
+}
