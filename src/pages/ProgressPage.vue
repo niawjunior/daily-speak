@@ -1,0 +1,128 @@
+<script setup lang="ts">
+import { computed, onMounted, ref } from "vue";
+import { toast } from "vue-sonner";
+import { Award, BookOpen, Flame, RotateCcw, Target, Volume2 } from "@lucide/vue";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { dayDate, isoDay, thaiDate, type Progress } from "@/data/words";
+import { api } from "@/lib/api";
+import { settings } from "@/lib/settings";
+import { say } from "@/lib/speech";
+
+const progress = ref<Progress | null>(null);
+const failed = ref(false);
+const picked = ref<number | null>(null);
+
+const tiles = computed(() =>
+  progress.value
+    ? [
+        { icon: Flame, label: "ฝึกต่อเนื่อง", value: `${progress.value.streak.current.toLocaleString("th-TH")} วัน`, note: `สูงสุด ${progress.value.streak.best.toLocaleString("th-TH")} วัน` },
+        { icon: Target, label: "ความแม่นยำเฉลี่ย", value: `${progress.value.score}%`, note: `จาก ${progress.value.tries.toLocaleString("th-TH")} ครั้งที่พูด` },
+        { icon: BookOpen, label: "คำที่ฝึกแล้ว", value: `${progress.value.words.toLocaleString("th-TH")} คำ`, note: `${progress.value.sentences.toLocaleString("th-TH")} ประโยค` },
+        { icon: Award, label: "พูดถูกทุกคำ", value: `${progress.value.perfect.toLocaleString("th-TH")} ครั้ง`, note: "ได้ 100%" },
+      ]
+    : [],
+);
+const peak = computed(() => Math.max(1, ...(progress.value?.last7.map((d) => d.tries) ?? [1])));
+const weekTries = computed(() => progress.value?.last7.reduce((s, d) => s + d.tries, 0) ?? 0);
+const weekdays = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
+const dow = (v: string | Date) => dayDate(v).getDay();
+
+async function load(): Promise<void> {
+  failed.value = false;
+  const { data, error } = await api.progress.get();
+  if (error) {
+    failed.value = true;
+    return void toast.error("โหลดสถิติไม่ได้ — ลองอีกครั้ง");
+  }
+  progress.value = data;
+  picked.value = data.last7.length - 1;
+}
+onMounted(load);
+</script>
+
+<template>
+  <section class="flex flex-col gap-6">
+    <div class="flex flex-col gap-1">
+      <h1 class="text-2xl font-semibold">สถิติการฝึก</h1>
+      <p class="text-sm text-muted-foreground">ดูว่าพูดได้แม่นขึ้นแค่ไหน และคำไหนที่ยังพลาดบ่อย</p>
+    </div>
+
+    <div v-if="failed" class="flex flex-col items-center gap-3 rounded-2xl border bg-card p-8 text-center">
+      <p class="text-sm text-muted-foreground">โหลดสถิติไม่ได้</p>
+      <Button variant="outline" class="h-11" @click="load"><RotateCcw /> ลองอีกครั้ง</Button>
+    </div>
+
+    <template v-else-if="progress">
+      <div class="grid grid-cols-2 gap-3">
+        <div v-for="t in tiles" :key="t.label" class="flex flex-col gap-1 rounded-2xl border bg-card p-4">
+          <div class="flex items-center gap-2 text-xs text-muted-foreground"><component :is="t.icon" class="size-4 text-primary" /> {{ t.label }}</div>
+          <span class="text-2xl font-bold tabular-nums">{{ t.value }}</span>
+          <span class="text-xs text-muted-foreground">{{ t.note }}</span>
+        </div>
+      </div>
+
+      <!-- Times spoken in the last 7 days -->
+      <div class="flex flex-col gap-4 rounded-2xl border bg-card p-4">
+        <div class="flex items-baseline justify-between">
+          <h2 class="text-base font-semibold">จำนวนครั้งที่พูด 7 วันล่าสุด</h2>
+          <span class="text-sm text-muted-foreground">รวม {{ weekTries.toLocaleString("th-TH") }} ครั้ง</span>
+        </div>
+        <div class="flex h-36 items-end gap-2 border-b border-border">
+          <button v-for="(d, i) in progress.last7" :key="d.date" type="button" class="group flex h-full flex-1 flex-col items-center justify-end focus-visible:outline-none"
+            :aria-label="`${thaiDate(d.date)} พูด ${d.tries} ครั้ง`" @click="picked = i" @mouseenter="picked = i">
+            <span class="mb-1 text-xs font-semibold tabular-nums" :class="picked === i ? 'text-foreground' : 'text-transparent'">{{ d.tries }}</span>
+            <span class="w-full max-w-8 rounded-t-[4px] transition-colors"
+              :class="picked === i ? 'bg-primary' : 'bg-primary/55 group-hover:bg-primary/75'"
+              :style="{ height: `${Math.max(d.tries ? 6 : 2, (d.tries / peak) * 100)}%` }" />
+          </button>
+        </div>
+        <div class="flex gap-2">
+          <span v-for="(d, i) in progress.last7" :key="d.date" class="flex-1 text-center text-xs" :class="picked === i ? 'font-semibold' : 'text-muted-foreground'">
+            {{ i === progress.last7.length - 1 ? "วันนี้" : weekdays[dow(d.date)] }}
+          </span>
+        </div>
+        <p v-if="picked !== null && progress.last7[picked]" class="rounded-xl bg-background px-3 py-2 text-sm">
+          {{ thaiDate(progress.last7[picked].date, { weekday: "long", day: "numeric", month: "short" }) }} ·
+          <template v-if="progress.last7[picked].tries">พูด {{ progress.last7[picked].tries.toLocaleString("th-TH") }} ครั้ง แม่นยำเฉลี่ย {{ progress.last7[picked].score }}%</template>
+          <template v-else>ยังไม่ได้ฝึก</template>
+        </p>
+      </div>
+
+      <!-- Days practised -->
+      <div class="flex flex-col gap-3 rounded-2xl border bg-card p-4">
+        <h2 class="text-base font-semibold">วันที่ฝึก 4 สัปดาห์ล่าสุด</h2>
+        <div class="grid grid-cols-7 gap-2">
+          <div v-for="d in progress.calendar" :key="isoDay(d.date)" :title="thaiDate(d.date)"
+            class="grid aspect-square place-items-center rounded-lg text-xs tabular-nums"
+            :class="d.practised ? 'bg-primary text-primary-foreground' : d.started ? 'border border-dashed border-primary/30 bg-background text-muted-foreground' : 'bg-background/60 text-muted-foreground/60'">
+            {{ dayDate(d.date).getDate() }}
+          </div>
+        </div>
+        <div class="flex gap-4 text-xs text-muted-foreground">
+          <span class="flex items-center gap-1"><span class="size-3 rounded bg-primary" /> ฝึกแล้ว</span>
+          <span class="flex items-center gap-1"><span class="size-3 rounded border border-dashed border-primary/30 bg-background" /> ยังไม่ได้ฝึก</span>
+        </div>
+      </div>
+
+      <!-- Words missed most -->
+      <div class="flex flex-col gap-3 rounded-2xl border bg-card p-4">
+        <h2 class="text-base font-semibold">คำที่พลาดบ่อย</h2>
+        <p v-if="!progress.tough.length" class="text-sm text-muted-foreground">ยังไม่มีคำที่พลาด — พูดถูกทุกคำมาตลอด</p>
+        <div v-for="(t, i) in progress.tough" :key="t.word" class="flex items-center gap-3">
+          <span class="w-5 text-sm text-muted-foreground tabular-nums">{{ (i + 1).toLocaleString("th-TH") }}</span>
+          <span class="flex-1 font-semibold">{{ t.word }}</span>
+          <span class="text-sm text-muted-foreground">พลาด {{ t.count.toLocaleString("th-TH") }} ครั้ง</span>
+          <Button variant="outline" size="icon-lg" class="size-10 rounded-full" :aria-label="`ฟังคำว่า ${t.word}`" @click="say(t.word, settings.accent, 0.75)">
+            <Volume2 class="size-4" />
+          </Button>
+        </div>
+      </div>
+    </template>
+
+    <template v-else>
+      <div class="grid grid-cols-2 gap-3"><Skeleton v-for="i in 4" :key="i" class="h-24 rounded-2xl" /></div>
+      <Skeleton class="h-56 rounded-2xl" />
+    </template>
+  </section>
+</template>

@@ -49,4 +49,17 @@ At `/app-mobile/` under the team's demo site — built with `BASE_PATH=/app-mobi
 - More components: `bunx --bun shadcn-vue@latest add <name>`.
 
 ## What we decided
-- (nothing yet)
+- Name: **Daily Speak** (ฝึกพูดอังกฤษวันละคำ). Mobile-first: one phone-width column (centred on desktop), top bar with
+  settings, bottom bar with 4 tabs. Theme “คาเฟ่อบอุ่น”; green `--success` = said right, `--destructive` = wrong.
+- Sample learner "มายด์", started 14 ต.ค. 2569; one word a day from 24 everyday words (server/data.ts, a fixed
+  shuffle by day number). Each word: IPA, Thai meaning, category, level, a pronunciation tip, 3 short sentences
+  (each with a `slip` = what the simulated listener mishears the first time). History is seeded: every day but one,
+  today's word not yet practised.
+- Pages: วันนี้ `/` (word of the day, tip, 3 sentences, CTA, recent words) · ฝึกพูด `/practice/:id?` (today's word when
+  no id; `?s=` picks the sentence) · คลังคำ `/words` (search, filter by category / ควรฝึกซ้ำ) · สถิติ `/progress`
+  (tiles, 7-day bars, 4-week calendar, words missed most).
+- Speech: "Google Speech-to-Text" = the browser's own SpeechRecognition (no key) with interim results — each word turns
+  green/red as it is heard (src/lib/match.ts aligns words). No mic / no service → falls back to โหมดจำลอง at once
+  (src/lib/speech.ts listenSim), labelled จำลอง. Example audio = browser speechSynthesis (US/UK, speed in settings).
+- Settings sheet (gear): accent, speed, checker (Google / จำลอง), daily reminder; "เริ่มเดโมใหม่" posts /api/reset to
+  restore the seeded history so the story can be shown again.
