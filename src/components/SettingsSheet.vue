@@ -5,6 +5,7 @@ import { useRouter } from "vue-router";
 import { Bell, BellRing, ChevronRight, Download, RotateCcw, Settings, Smartphone, Sparkles } from "@lucide/vue";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -52,8 +53,8 @@ function toAi(): void {
 }
 function save(): void {
   // The sheet's own choices — the AI ones are set on their page.
-  const { accent, rate, checker, remind, remindAt, evening, eveningAt } = draft.value;
-  settings.value = { ...settings.value, accent, rate, checker, remind, remindAt, evening, eveningAt };
+  const { name, accent, rate, checker, remind, remindAt, evening, eveningAt } = draft.value;
+  settings.value = { ...settings.value, name: name.trim(), accent, rate, checker, remind, remindAt, evening, eveningAt };
   open.value = false;
   const d = draft.value;
   const when = [d.remind && `เตือนคำใหม่ ${d.remindAt} น.`, d.evening && `เตือนตอนค่ำ ${d.eveningAt} น. ถ้ายังไม่ได้ฝึก`].filter(Boolean).join(" · ");
@@ -77,9 +78,14 @@ async function reset(): Promise<void> {
     <SheetContent side="bottom" class="mx-auto max-h-[92dvh] max-w-md overflow-y-auto rounded-t-2xl">
       <SheetHeader>
         <SheetTitle class="font-heading text-lg">ตั้งค่าการฝึก</SheetTitle>
-        <SheetDescription>เลือกสำเนียง ความเร็วเสียงตัวอย่าง และตัวตรวจการออกเสียง</SheetDescription>
+        <SheetDescription>ตั้งชื่อ เลือกสำเนียง ความเร็วเสียงตัวอย่าง และตัวตรวจการออกเสียง</SheetDescription>
       </SheetHeader>
       <div class="flex flex-col gap-6 px-4">
+        <div class="flex flex-col gap-2">
+          <Label for="name">ชื่อของคุณ</Label>
+          <Input id="name" v-model="draft.name" placeholder="มายด์" maxlength="20" autocomplete="nickname" class="h-11" />
+          <p class="text-xs text-muted-foreground">ใช้ทักทายในหน้าวันนี้ · เก็บไว้ในเครื่องนี้เท่านั้น</p>
+        </div>
         <div class="flex flex-col gap-2">
           <Label>สำเนียง</Label>
           <Select v-model="draft.accent">

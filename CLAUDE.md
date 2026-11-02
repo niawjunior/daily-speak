@@ -89,7 +89,8 @@ At `/daily-speak/` under the team's demo site — built with `BASE_PATH=/daily-s
   answer `{ audio: base64 }`), kept in memory per voice+accent+text. Client src/lib/voice.ts: `say()` in
   src/lib/speech.ts goes through it for every "ฟัง" button, speed = playbackRate, one shared player unlocked inside the
   press (iPhone), today's word + sentences preloaded; any failure → the phone's voice (one toast).
-- Settings sheet (gear): accent, speed, checker (Google / จำลอง), แอปและการแจ้งเตือน (install, allow notifications,
+- Settings sheet (gear): ชื่อของคุณ (settings.name, kept on the phone; empty → the sample "มายด์" from server/data.ts; used in
+  the วันนี้ greeting), accent, speed, checker (Google / จำลอง), แอปและการแจ้งเตือน (install, allow notifications,
   morning reminder, evening streak reminder + "ทดลองส่งแจ้งเตือนตอนค่ำ" for the demo); "เริ่มเดโมใหม่" posts /api/reset to
   restore the seeded history so the story can be shown again.
 - Vercel (daily-speak-ten.vercel.app, from GitHub main): the page is the Vite build; the API is one function,

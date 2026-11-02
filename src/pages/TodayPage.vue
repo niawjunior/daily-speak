@@ -63,7 +63,7 @@ onMounted(load);
       <div class="flex items-start justify-between gap-4">
         <div class="flex flex-col gap-1">
           <p class="text-sm text-muted-foreground">{{ thaiDate(today.date, { weekday: "long", day: "numeric", month: "long", year: "numeric" }) }}</p>
-          <h1 class="text-2xl font-semibold">{{ greeting }} {{ today.learner.name }}</h1>
+          <h1 class="text-2xl font-semibold">{{ greeting }} {{ settings.name.trim() || today.learner.name }}</h1>
         </div>
         <div class="flex shrink-0 items-center gap-1 rounded-full border border-accent/50 bg-accent/20 px-3 py-1.5 text-sm font-semibold">
           <Flame class="size-4 text-primary" /> {{ today.streak.toLocaleString("th-TH") }} วันติด
