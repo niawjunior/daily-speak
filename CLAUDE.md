@@ -1,4 +1,4 @@
-# ทำ app สำหรับฝึกภาษาอังกฤษ สำหรับใช้บน mobile…
+# Daily Speak ฝึกพูดอังกฤษวันละคำ
 
 <!-- sup-plana:brief — written by the sup-plana runner from the app's page; edit it there, not here -->
 - **What it is:** เดโม — a DEMO for a client meeting: polished, every step of the story the owner will walk through works, believable data; breadth over depth
@@ -15,7 +15,7 @@ Build every page in it from the first version: these colours as the app's CSS va
 ```
 
 ### Where it is deployed
-At `/app-mobile/` under the team's demo site — built with `BASE_PATH=/app-mobile/ bun run build`. Never write a link, an asset path or a fetch as an absolute `/…`: go through the router, `import.meta.env.BASE_URL` and the app's api client, so it works at `/` in dev and at `/app-mobile/` deployed.
+At `/daily-speak/` under the team's demo site — built with `BASE_PATH=/daily-speak/ bun run build`. Never write a link, an asset path or a fetch as an absolute `/…`: go through the router, `import.meta.env.BASE_URL` and the app's api client, so it works at `/` in dev and at `/daily-speak/` deployed.
 <!-- /sup-plana:brief -->
 
 ## How this app is worked
@@ -54,7 +54,12 @@ At `/app-mobile/` under the team's demo site — built with `BASE_PATH=/app-mobi
 - Sample learner "มายด์", started 14 ต.ค. 2569; one word a day from 24 everyday words (server/data.ts, a fixed
   shuffle by day number). Each word: IPA, Thai meaning, category, level, a pronunciation tip, 3 short sentences
   (each with a `slip` = what the simulated listener mishears the first time). History is seeded: every day but one,
-  today's word not yet practised.
+  today's word not yet practised. The missed day is a week ago, so the streak stands at 6.
+- Medals (server/app.ts MEDALS): 7 วันติด "เหรียญนักพูดหนึ่งสัปดาห์" (bronze) and 30 วันติด "เหรียญนักพูดหนึ่งเดือน" (gold);
+  each run that reaches the mark earns it once more (count + dates). Demo story: the first sentence said today makes 7
+  days → a celebration dialog on ฝึกพูด (confetti, "ดูเหรียญของฉัน"), a medal card on the summary. วันนี้ shows a strip
+  "ฝึกวันนี้ได้เหรียญ…ทันที" / "อีก N วัน"; สถิติ has a เหรียญรางวัล card (earned or locked, progress of this run).
+  The medal look is src/components/MedalBadge.vue.
 - Pages: วันนี้ `/` (word of the day, tip, 3 sentences, CTA, recent words) · ฝึกพูด `/practice/:id?` (today's word when
   no id; `?s=` picks the sentence) · คลังคำ `/words` (search, filter by category / ควรฝึกซ้ำ) · สถิติ `/progress`
   (tiles, 7-day bars, 4-week calendar, words missed most).

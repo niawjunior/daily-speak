@@ -275,12 +275,13 @@ export const wordOfDay = (key: string): Word => {
 export const dateOfDay = (n: number) => new Date(Date.parse(learner.startedOn) + (n - 1) * DAY).toISOString().slice(0, 10);
 
 // Practice so far: every day since the start but one, today's word not yet — so the demo opens on a fresh word.
+// The day missed is a week ago: the streak stands at 6, and practising today earns the 7-day medal on screen.
 export const attempts: Attempt[] = [];
 // Fills the practice history from the start again — on boot, and from "เริ่มเดโมใหม่".
 export function seedAttempts(): void {
   attempts.length = 0;
   const today = dayNumber(dayKey(new Date()));
-  const skipped = new Set([today - 13]);
+  const skipped = new Set([today - 7]);
   let id = 1;
   let seed = 7;
   const rand = () => ((seed = (seed * 16_807) % 2_147_483_647) / 2_147_483_647);

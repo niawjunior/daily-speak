@@ -47,6 +47,26 @@ function streakOf(days: Set<string>): { current: number; best: number } {
   return { current, best };
 }
 
+// Medals for practising days in a row — each run that reaches the mark earns it once more.
+const MEDALS = [
+  { days: 7, name: "เหรียญนักพูดหนึ่งสัปดาห์", tier: "bronze" as const },
+  { days: 30, name: "เหรียญนักพูดหนึ่งเดือน", tier: "gold" as const },
+];
+
+function medalsOf(days: Set<string>) {
+  const n = dayNumber(today());
+  const { current } = streakOf(days);
+  return MEDALS.map((m) => {
+    const earned: string[] = [];
+    let run = 0;
+    for (let d = 1; d <= n; d++) {
+      run = days.has(dateOfDay(d)) ? run + 1 : 0;
+      if (run === m.days) earned.push(dateOfDay(d));
+    }
+    return { ...m, earned, count: earned.length, progress: Math.min(current, m.days) };
+  });
+}
+
 // The API, under /api — the page calls it through Eden (src/lib/api.ts), typed end to end.
 export const app = new Elysia({ prefix: "/api" })
   .use(cors())
@@ -54,7 +74,11 @@ export const app = new Elysia({ prefix: "/api" })
   .get("/today", () => {
     const key = today();
     const day = dayNumber(key);
-    return { learner, date: key, word: summary(wordOfDay(key), day), streak: streakOf(practisedDays()).current };
+    const days = practisedDays();
+    const streak = streakOf(days).current;
+    // The next medal to aim for in this run.
+    const next = MEDALS.find((m) => m.days > streak) ?? null;
+    return { learner, date: key, word: summary(wordOfDay(key), day), streak, practisedToday: days.has(key), nextMedal: next && { ...next, left: next.days - streak } };
   })
   // Every word received so far, newest first.
   .get("/words", () => {
@@ -94,6 +118,7 @@ export const app = new Elysia({ prefix: "/api" })
     const perfect = attempts.filter((a) => a.score === 100).length;
     return {
       streak: streakOf(days),
+      medals: medalsOf(days),
       words: new Set(attempts.map((a) => a.wordId)).size,
       sentences: firstTry.size,
       tries: attempts.length,
@@ -107,9 +132,13 @@ export const app = new Elysia({ prefix: "/api" })
   .post(
     "/attempts",
     ({ body }) => {
+      const firstToday = !practisedDays().has(today());
       const attempt: Attempt = { id: Math.max(0, ...attempts.map((a) => a.id)) + 1, ...body, at: new Date().toISOString() };
       attempts.push(attempt);
-      return { attempt, streak: streakOf(practisedDays()).current };
+      const streak = streakOf(practisedDays()).current;
+      // The first practice of the day that brings the streak to a mark earns its medal.
+      const medal = firstToday ? (MEDALS.find((m) => m.days === streak) ?? null) : null;
+      return { attempt, streak, medal };
     },
     { body: t.Object({ wordId: t.Number(), sentence: t.Number(), score: t.Number({ minimum: 0, maximum: 100 }), missed: t.Array(t.String()) }) },
   )

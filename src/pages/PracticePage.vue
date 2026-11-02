@@ -3,8 +3,10 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { toast } from "vue-sonner";
 import { ArrowRight, ChevronLeft, Flame, Mic, RotateCcw, Snail, Square, Trophy, Volume2 } from "@lucide/vue";
+import MedalBadge from "@/components/MedalBadge.vue";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { scoreLook, toneClass, type WordCard } from "@/data/words";
 import { api } from "@/lib/api";
@@ -23,6 +25,10 @@ const isFinal = ref(false);
 const tries = ref<number[]>([]);
 const session = ref<(number | null)[]>([]);
 const streak = ref<number | null>(null);
+// The medal earned in this session — shown in a dialog, then kept on the summary.
+const medal = ref<{ days: number; name: string; tier: "bronze" | "gold" } | null>(null);
+const medalOpen = computed({ get: () => !!medal.value && !medalSeen.value, set: (v) => (medalSeen.value = !v) });
+const medalSeen = ref(false);
 const resultBox = ref<HTMLElement | null>(null);
 let listening: Listening | null = null;
 
@@ -115,6 +121,7 @@ async function finish(): Promise<void> {
   const { data } = await api.attempts.post({ wordId: word.value.id, sentence: i, score: score.value, missed: missed.value.map((m) => cleanWord(m.text)) });
   if (data) {
     streak.value = data.streak;
+    if (data.medal) medal.value = data.medal;
     word.value.best[i] = Math.max(word.value.best[i] ?? 0, score.value);
   } else toast.error("บันทึกผลไม่สำเร็จ — ผลครั้งนี้ยังแสดงอยู่");
 }
@@ -136,6 +143,13 @@ function restart(): void {
   session.value = session.value.map(() => null);
   again();
 }
+const confetti = Array.from({ length: 18 }, (_, i) => ({
+  i,
+  x: (i * 37 + 11) % 96,
+  w: 6 + (i % 3) * 2,
+  delay: (i % 6) * 0.12,
+  tone: ["bg-primary", "bg-accent", "bg-success"][i % 3],
+}));
 const listen = (rate = settings.value.rate) => sentence.value && say(sentence.value.en, settings.value.accent, rate);
 </script>
 
@@ -254,6 +268,15 @@ const listen = (rate = settings.value.rate) => sentence.value && say(sentence.va
           <Flame class="size-4 text-accent" /> ฝึกต่อเนื่อง {{ streak.toLocaleString("th-TH") }} วัน
         </div>
       </div>
+      <RouterLink v-if="medal" to="/progress" class="flex items-center gap-4 rounded-2xl border border-accent/50 bg-accent/15 p-4 transition-colors hover:bg-accent/25">
+        <MedalBadge :days="medal.days" :tier="medal.tier" />
+        <div class="flex min-w-0 flex-1 flex-col">
+          <span class="text-xs text-muted-foreground">ได้เหรียญใหม่วันนี้</span>
+          <span class="font-semibold">{{ medal.name }}</span>
+          <span class="text-sm text-muted-foreground">ฝึกพูดติดกันครบ {{ medal.days.toLocaleString("th-TH") }} วัน</span>
+        </div>
+        <ArrowRight class="size-4 shrink-0 text-muted-foreground" />
+      </RouterLink>
       <div class="flex flex-col gap-3">
         <div v-for="(s, i) in word.sentences" :key="i" class="flex items-center gap-3 rounded-2xl border bg-card p-4">
           <div class="flex min-w-0 flex-1 flex-col">
@@ -268,6 +291,28 @@ const listen = (rate = settings.value.rate) => sentence.value && say(sentence.va
         <Button as-child class="h-12 rounded-xl"><RouterLink to="/progress">ดูสถิติของฉัน</RouterLink></Button>
       </div>
     </template>
+
+    <!-- A medal just earned -->
+    <Dialog v-model:open="medalOpen">
+      <DialogContent v-if="medal" class="max-w-sm overflow-hidden rounded-3xl text-center">
+        <div class="pointer-events-none absolute inset-x-0 top-0 h-40">
+          <span v-for="c in confetti" :key="c.i" class="medal-confetti absolute top-0 rounded-sm"
+            :class="c.tone" :style="{ left: `${c.x}%`, width: `${c.w}px`, height: `${c.w * 1.6}px`, animationDelay: `${c.delay}s` }" />
+        </div>
+        <div class="relative flex flex-col items-center gap-4 pt-2">
+          <div class="medal-pop"><MedalBadge :days="medal.days" :tier="medal.tier" size="lg" /></div>
+          <div class="flex flex-col gap-1">
+            <p class="text-sm font-medium text-primary">ยินดีด้วย! ได้เหรียญใหม่</p>
+            <DialogTitle class="font-heading text-2xl font-bold">{{ medal.name }}</DialogTitle>
+            <DialogDescription>ฝึกพูดติดกันครบ {{ medal.days.toLocaleString("th-TH") }} วันแล้ว รักษาความต่อเนื่องไว้นะ</DialogDescription>
+          </div>
+          <div class="grid w-full gap-2">
+            <Button class="h-12 rounded-xl" @click="medalSeen = true">ฝึกต่อ</Button>
+            <Button as-child variant="outline" class="h-12 rounded-xl"><RouterLink to="/progress">ดูเหรียญของฉัน</RouterLink></Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   </section>
 
   <section v-else class="flex flex-col gap-6">

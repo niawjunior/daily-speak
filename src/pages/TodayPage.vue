@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { toast } from "vue-sonner";
-import { ArrowRight, CircleCheck, Flame, Lightbulb, Mic, RotateCcw, Volume2 } from "@lucide/vue";
+import { ArrowRight, CircleCheck, Flame, Lightbulb, Medal, Mic, RotateCcw, Volume2 } from "@lucide/vue";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -50,6 +50,21 @@ onMounted(load);
           <Flame class="size-4 text-primary" /> {{ today.streak.toLocaleString("th-TH") }} วันติด
         </div>
       </div>
+
+      <!-- The next medal to aim for -->
+      <RouterLink v-if="today.nextMedal" to="/progress" class="-mt-2 flex items-center gap-3 rounded-2xl border border-accent/50 bg-accent/15 p-3 transition-colors hover:bg-accent/25">
+        <span class="grid size-10 shrink-0 place-items-center rounded-full bg-accent text-accent-foreground"><Medal class="size-5" /></span>
+        <div class="flex min-w-0 flex-1 flex-col gap-1.5">
+          <p class="text-sm">
+            <template v-if="today.nextMedal.left === 1 && !today.practisedToday"><span class="font-semibold">ฝึกวันนี้ได้{{ today.nextMedal.name }}ทันที</span></template>
+            <template v-else>อีก <span class="font-semibold">{{ today.nextMedal.left.toLocaleString("th-TH") }} วัน</span> ได้{{ today.nextMedal.name }}</template>
+          </p>
+          <div class="h-1.5 overflow-hidden rounded-full bg-background">
+            <div class="h-full rounded-full bg-primary" :style="{ width: `${(today.streak / today.nextMedal.days) * 100}%` }" />
+          </div>
+        </div>
+        <ArrowRight class="size-4 shrink-0 text-muted-foreground" />
+      </RouterLink>
 
       <!-- The word of the day -->
       <article class="relative overflow-hidden rounded-3xl bg-primary p-6 text-primary-foreground shadow-md">

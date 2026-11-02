@@ -1,9 +1,9 @@
 <!-- sup-plana:about -->
-# ทำ app สำหรับฝึกภาษาอังกฤษ สำหรับใช้บน mobile…
+# Daily Speak ฝึกพูดอังกฤษวันละคำ
 
 เดโม · โดย เนี้ยว — สร้างและแก้ต่อด้วย Claude จากหน้า Claude › แอป ของ sup-plana
 
-ลิงก์: `/app-mobile/` · build: `BASE_PATH=/app-mobile/ bun run build`
+ลิงก์: `/daily-speak/` · build: `BASE_PATH=/daily-speak/ bun run build`
 <!-- /sup-plana:about -->
 
 สร้างจาก starter **vue-elysia** ของ sup-plana — Claude สร้างและแก้ต่อจากหน้า Claude › แอป

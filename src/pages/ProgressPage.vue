@@ -2,9 +2,11 @@
 import { computed, onMounted, ref } from "vue";
 import { toast } from "vue-sonner";
 import { Award, BookOpen, Flame, RotateCcw, Target, Volume2 } from "@lucide/vue";
+import MedalBadge from "@/components/MedalBadge.vue";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { dayDate, isoDay, thaiDate, type Progress } from "@/data/words";
+import { dayDate, isoDay, thaiDate, toneClass, type Progress } from "@/data/words";
 import { api } from "@/lib/api";
 import { settings } from "@/lib/settings";
 import { say } from "@/lib/speech";
@@ -23,6 +25,7 @@ const tiles = computed(() =>
       ]
     : [],
 );
+const medalTotal = computed(() => progress.value?.medals.reduce((s, m) => s + m.count, 0) ?? 0);
 const peak = computed(() => Math.max(1, ...(progress.value?.last7.map((d) => d.tries) ?? [1])));
 const weekTries = computed(() => progress.value?.last7.reduce((s, d) => s + d.tries, 0) ?? 0);
 const weekdays = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
@@ -60,6 +63,33 @@ onMounted(load);
           <span class="text-2xl font-bold tabular-nums">{{ t.value }}</span>
           <span class="text-xs text-muted-foreground">{{ t.note }}</span>
         </div>
+      </div>
+
+      <!-- Medals for days in a row -->
+      <div class="flex flex-col gap-3 rounded-2xl border bg-card p-4">
+        <div class="flex items-baseline justify-between">
+          <h2 class="text-base font-semibold">เหรียญรางวัล</h2>
+          <span class="text-sm text-muted-foreground">ได้แล้ว {{ medalTotal.toLocaleString("th-TH") }} เหรียญ</span>
+        </div>
+        <div v-for="m in progress.medals" :key="m.days" class="flex items-center gap-4 rounded-xl bg-background p-3">
+          <MedalBadge :days="m.days" :tier="m.tier" :locked="!m.count" />
+          <div class="flex min-w-0 flex-1 flex-col gap-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="font-semibold">{{ m.name }}</span>
+              <Badge v-if="m.count" variant="outline" :class="toneClass.success">ได้ {{ m.count.toLocaleString("th-TH") }} ครั้ง</Badge>
+            </div>
+            <span class="text-xs text-muted-foreground">
+              ฝึกพูดติดกัน {{ m.days.toLocaleString("th-TH") }} วัน<template v-if="m.count"> · ล่าสุด {{ thaiDate(m.earned[m.earned.length - 1]!, { day: "numeric", month: "short", year: "numeric" }) }}</template>
+            </span>
+            <div class="mt-1 h-2 overflow-hidden rounded-full bg-card">
+              <div class="h-full rounded-full transition-all" :class="m.progress >= m.days ? 'bg-success' : 'bg-accent'" :style="{ width: `${(m.progress / m.days) * 100}%` }" />
+            </div>
+            <span class="text-xs" :class="m.progress >= m.days ? 'font-semibold text-success' : 'text-muted-foreground'">
+              {{ m.progress >= m.days ? "รอบนี้ครบแล้ว" : `รอบนี้ ${m.progress.toLocaleString("th-TH")}/${m.days.toLocaleString("th-TH")} วัน · อีก ${(m.days - m.progress).toLocaleString("th-TH")} วัน` }}
+            </span>
+          </div>
+        </div>
+        <p class="text-xs text-muted-foreground">ขาดไป 1 วัน นับใหม่ตั้งแต่วันแรก — เหรียญที่ได้แล้วยังอยู่ครบ</p>
       </div>
 
       <!-- Times spoken in the last 7 days -->
