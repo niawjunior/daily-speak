@@ -1,7 +1,7 @@
 import { cors } from "@elysiajs/cors";
 import { openapi } from "@elysiajs/openapi";
 import { Elysia, t } from "elysia";
-import { AiError, generate, MODELS, ping, serverKey, simulate } from "./ai";
+import { AiError, generate, MODELS, ping, serverKey, simulate, speak, TTS_MODEL, VOICES } from "./ai";
 import { aiDays, attempts, dateOfDay, dayKey, dayNumber, learner, seedAttempts, wordOfDay, words, type Attempt, type Word } from "./data";
 
 // Deployed under a path (sales-demo/<app>/): built and started with BASE_PATH=/<app>/ — the page, the API and their docs
@@ -151,6 +151,8 @@ export const app = new Elysia({ prefix: "/api" })
   // ——— New words by AI (server/ai.ts). The key comes from the page (kept on the phone), else the server's own. ———
   .get("/ai", () => ({
     models: MODELS,
+    voices: VOICES,
+    ttsModel: TTS_MODEL,
     serverKey: !!serverKey(),
     made: words
       .filter((w) => w.source)
@@ -169,6 +171,20 @@ export const app = new Elysia({ prefix: "/api" })
       }
     },
     { body: t.Object({ key: t.Optional(t.String()), model: t.String() }) },
+  )
+  // A sentence or a word in the AI voice (WAV, base64) — the page falls back to the phone's own voice on an error.
+  .post(
+    "/ai/speech",
+    async ({ body, status }) => {
+      const key = body.key?.trim() || serverKey();
+      if (!key) return status(400, { error: "ยังไม่ได้ใส่ API key — ใช้เสียงของเครื่องแทน" });
+      try {
+        return { mime: "audio/wav", ...(await speak(key, { text: body.text.slice(0, 300), voice: body.voice, accent: body.accent })) };
+      } catch (e) {
+        return status(e instanceof AiError ? 400 : 500, { error: e instanceof AiError ? e.message : "สร้างเสียง AI ไม่สำเร็จ — ใช้เสียงของเครื่องแทน" });
+      }
+    },
+    { body: t.Object({ key: t.Optional(t.String()), text: t.String({ minLength: 1 }), voice: t.String(), accent: t.String() }) },
   )
   // Makes today's word anew: through AI Gateway with a key, else from the จำลอง reserve.
   .post(

@@ -82,6 +82,13 @@ At `/daily-speak/` under the team's demo site — built with `BASE_PATH=/daily-s
   words in server/ai.ts `reserve`, labelled "AI · จำลอง". A made word is pushed to `words` and set as today's word
   (data.ts `aiDays`, in memory). "สร้างคำใหม่ด้วย AI ทุกวัน" (aiDaily) makes it on the first visit of the day (วันนี้
   shows "AI กำลังคิดคำของวันนี้…"); the word card shows "สร้างโดย AI · <model>". GET /api/ai lists the models and words made.
+- AI voice (เสียงอ่าน on `/settings/ai`): settings.voice "device" (browser speechSynthesis) | "ai" (Gemini 3.8 Flash
+  TTS, voices Kore · Puck · Zephyr · Charon in settings.aiVoice). Server: POST /api/ai/speech → AI Gateway
+  `POST https://ai-gateway.vercel.sh/v4/ai/speech-model` (headers ai-gateway-protocol-version 0.0.1,
+  ai-speech-model-specification-version 4, ai-model-id; body text/voice/outputFormat wav/instructions with the accent;
+  answer `{ audio: base64 }`), kept in memory per voice+accent+text. Client src/lib/voice.ts: `say()` in
+  src/lib/speech.ts goes through it for every "ฟัง" button, speed = playbackRate, one shared player unlocked inside the
+  press (iPhone), today's word + sentences preloaded; any failure → the phone's voice (one toast).
 - Settings sheet (gear): accent, speed, checker (Google / จำลอง), แอปและการแจ้งเตือน (install, allow notifications,
   morning reminder, evening streak reminder + "ทดลองส่งแจ้งเตือนตอนค่ำ" for the demo); "เริ่มเดโมใหม่" posts /api/reset to
   restore the seeded history so the story can be shown again.

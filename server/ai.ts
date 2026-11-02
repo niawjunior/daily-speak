@@ -150,3 +150,53 @@ export async function simulate(o: { avoid: string[]; category: string }): Promis
   const pick = left.find((w) => w.category === o.category) ?? left[0]!;
   return { ...pick, source: "sim", model: "จำลอง" };
 }
+
+// ——— AI voice: text to speech through AI Gateway (its speech-model API; the audio comes back as base64 WAV) ———
+export const TTS_MODEL = "google/gemini-3.8-flash-tts";
+export const VOICES = [
+  { id: "Kore", name: "Kore", note: "เสียงผู้หญิง ชัดถ้อยชัดคำ" },
+  { id: "Puck", name: "Puck", note: "เสียงผู้ชาย สดใส" },
+  { id: "Zephyr", name: "Zephyr", note: "เสียงผู้หญิง สว่าง เป็นกันเอง" },
+  { id: "Charon", name: "Charon", note: "เสียงผู้ชาย นุ่ม น่าฟัง" },
+] as const;
+
+// Each sentence is made once per voice and accent, then said again from here — no second charge.
+const spoken = new Map<string, string>();
+
+export async function speak(key: string, o: { text: string; voice: string; accent: string }): Promise<{ audio: string; cached: boolean }> {
+  const voice = VOICES.some((v) => v.id === o.voice) ? o.voice : "Kore";
+  const accent = o.accent === "en-GB" ? "a British" : "an American";
+  const id = `${voice}|${accent}|${o.text}`;
+  const hit = spoken.get(id);
+  if (hit) return { audio: hit, cached: true };
+  let res: Response;
+  try {
+    res = await fetch("https://ai-gateway.vercel.sh/v4/ai/speech-model", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "ai-gateway-protocol-version": "0.0.1",
+        "ai-speech-model-specification-version": "4",
+        "ai-model-id": TTS_MODEL,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        text: o.text,
+        voice,
+        outputFormat: "wav",
+        instructions: `Say it exactly as written, clearly and naturally, with ${accent} accent, for a Thai learner of English.`,
+      }),
+      signal: AbortSignal.timeout(30_000),
+    });
+  } catch {
+    throw new AiError("ติดต่อ Vercel AI Gateway ไม่ได้ — ใช้เสียงของเครื่องแทน");
+  }
+  if (res.status === 401 || res.status === 403) throw new AiError("API key ไม่ถูกต้อง หรือถูกยกเลิกแล้ว — ใช้เสียงของเครื่องแทน");
+  if (res.status === 402) throw new AiError("เครดิตของ AI Gateway หมด — ใช้เสียงของเครื่องแทน");
+  if (!res.ok) throw new AiError(`สร้างเสียง AI ไม่สำเร็จ (${res.status}) — ใช้เสียงของเครื่องแทน`);
+  const data = (await res.json()) as { audio?: string };
+  if (!data.audio) throw new AiError("AI ไม่ได้ส่งเสียงกลับมา — ใช้เสียงของเครื่องแทน");
+  if (spoken.size > 300) spoken.delete(spoken.keys().next().value!);
+  spoken.set(id, data.audio);
+  return { audio: data.audio, cached: false };
+}

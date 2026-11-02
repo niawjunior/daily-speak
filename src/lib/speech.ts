@@ -1,6 +1,8 @@
 // Listening and speaking. "google" is the browser's own speech recognition (Google's speech-to-text in Chrome and
 // Android, Apple's in Safari) — no key needed. "sim" is the simulated listener (จำลอง): it "hears" the sentence word by
 // word, mishearing one word the first time, so the story can be shown anywhere — no microphone needed.
+import { settings } from "@/lib/settings";
+import { sayAi, stopVoice } from "@/lib/voice";
 
 export interface Listening {
   stop(): void;
@@ -87,8 +89,22 @@ export function listenSim(o: ListenOptions): Listening {
   };
 }
 
-// Says a sentence or a word aloud with the browser's own voice.
+// Says a sentence or a word aloud: the AI voice when chosen in settings, else (or when it fails) the browser's own.
 export function say(text: string, lang: string, rate: number): void {
+  stopSpeaking();
+  if (settings.value.voice === "ai") {
+    void sayAi(text, lang, rate).then((ok) => ok || sayDevice(text, lang, rate));
+    return;
+  }
+  sayDevice(text, lang, rate);
+}
+
+export function stopSpeaking(): void {
+  stopVoice();
+  window.speechSynthesis?.cancel();
+}
+
+export function sayDevice(text: string, lang: string, rate: number): void {
   if (!("speechSynthesis" in window)) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);

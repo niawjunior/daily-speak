@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { toast } from "vue-sonner";
-import { ArrowRight, ChevronLeft, Flame, Mic, RotateCcw, Snail, Square, Trophy, Volume2 } from "@lucide/vue";
+import { ArrowRight, ChevronLeft, Flame, LoaderCircle, Mic, RotateCcw, Snail, Square, Trophy, Volume2 } from "@lucide/vue";
 import MedalBadge from "@/components/MedalBadge.vue";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,8 @@ import { scoreLook, toneClass, type WordCard } from "@/data/words";
 import { api } from "@/lib/api";
 import { cleanWord, grade, scoreOf } from "@/lib/match";
 import { settings } from "@/lib/settings";
-import { canListen, listenGoogle, listenSim, say, type Listening } from "@/lib/speech";
+import { canListen, listenGoogle, listenSim, say, stopSpeaking, type Listening } from "@/lib/speech";
+import { preloadVoice, voiceLoading } from "@/lib/voice";
 
 const route = useRoute();
 const router = useRouter();
@@ -67,6 +68,7 @@ async function load(): Promise<void> {
   tries.value = data.sentences.map(() => 0);
   session.value = data.sentences.map(() => null);
   transcript.value = "";
+  void preloadVoice([...data.sentences.map((s) => s.en), data.word]);
 }
 watch(() => route.params.id, load, { immediate: true });
 onBeforeUnmount(stop);
@@ -79,7 +81,7 @@ function stop(): void {
 function start(): void {
   if (!word.value || !sentence.value) return;
   if (phase.value === "listening") return stop();
-  window.speechSynthesis?.cancel();
+  stopSpeaking();
   transcript.value = "";
   isFinal.value = false;
   phase.value = "listening";
@@ -203,7 +205,9 @@ const listen = (rate = settings.value.rate) => sentence.value && say(sentence.va
         </div>
         <p class="text-base text-muted-foreground">{{ sentence.th }}</p>
         <div class="flex gap-2">
-          <Button variant="outline" class="h-11 flex-1 rounded-xl" @click="listen()"><Volume2 /> ฟังตัวอย่าง</Button>
+          <Button variant="outline" class="h-11 flex-1 rounded-xl" @click="listen()">
+            <LoaderCircle v-if="voiceLoading?.endsWith(`|${sentence.en}`)" class="animate-spin" /><Volume2 v-else /> ฟังตัวอย่าง
+          </Button>
           <Button variant="ghost" class="h-11 flex-1 rounded-xl" @click="listen(0.6)"><Snail /> ฟังช้าๆ</Button>
         </div>
       </div>

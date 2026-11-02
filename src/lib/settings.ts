@@ -20,4 +20,7 @@ export const settings = useLocalStorage("daily-speak:settings", {
   aiDaily: false,
   aiLevel: "A2" as "A1" | "A2" | "B1",
   aiCategory: "any",
+  // The voice of every "ฟัง" button: the phone's own, or the AI voice (Gemini 3.8 Flash TTS through AI Gateway).
+  voice: "device" as "device" | "ai",
+  aiVoice: "Kore",
 }, { mergeDefaults: true });

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { toast } from "vue-sonner";
-import { ArrowRight, ChevronLeft, CircleCheck, CircleAlert, Eye, EyeOff, KeyRound, LoaderCircle, Sparkles, Trash2 } from "@lucide/vue";
+import { ArrowRight, AudioLines, ChevronLeft, CircleCheck, CircleAlert, Eye, EyeOff, KeyRound, LoaderCircle, Sparkles, Trash2, Volume2 } from "@lucide/vue";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,8 @@ import { categories, levels, thaiDate } from "@/data/words";
 import { makeTodayWord, masked, modelName } from "@/lib/ai";
 import { api } from "@/lib/api";
 import { settings } from "@/lib/settings";
+import { sayDevice, stopSpeaking } from "@/lib/speech";
+import { sayAi, voiceLoading } from "@/lib/voice";
 
 type Info = NonNullable<Awaited<ReturnType<typeof api.ai.get>>["data"]>;
 type Made = NonNullable<Awaited<ReturnType<typeof makeTodayWord>>["word"]>;
@@ -60,6 +62,17 @@ function removeKey(): void {
   settings.value.aiKey = "";
   test.value = null;
   toast.success("ลบ API key ออกจากเครื่องนี้แล้ว — กลับไปใช้โหมดจำลอง");
+}
+
+const voiceModes = [
+  { id: "device" as const, name: "เสียงของเครื่อง", note: "ฟรี ใช้ได้ไม่ต้องต่อเน็ต เสียงต่างกันไปแต่ละเครื่อง" },
+  { id: "ai" as const, name: "เสียง AI", note: "Gemini 3.8 Flash TTS เป็นธรรมชาติ ทุกเครื่องได้ยินเหมือนกัน" },
+];
+const sample = "Good morning! Let's practise today's word together.";
+async function tryVoice(voice: string): Promise<void> {
+  settings.value.aiVoice = voice;
+  stopSpeaking();
+  if (!(await sayAi(sample, settings.value.accent, settings.value.rate, voice))) sayDevice(sample, settings.value.accent, settings.value.rate);
 }
 
 async function makeNow(): Promise<void> {
@@ -154,6 +167,50 @@ async function makeNow(): Promise<void> {
         </button>
       </div>
       <Skeleton v-else class="h-48 rounded-xl" />
+    </div>
+
+    <!-- The voice of every "ฟัง" button -->
+    <div class="flex flex-col gap-3 rounded-2xl border bg-card p-4">
+      <div class="flex items-center gap-2"><AudioLines class="size-4 text-primary" /><h2 class="text-base font-semibold">เสียงอ่าน</h2></div>
+      <div class="grid grid-cols-2 gap-2">
+        <button v-for="o in voiceModes" :key="o.id" type="button"
+          class="flex flex-col gap-0.5 rounded-xl border p-3 text-left transition-colors"
+          :class="settings.voice === o.id ? 'border-primary bg-background' : 'border-transparent bg-background/60 hover:border-border'"
+          @click="settings.voice = o.id">
+          <span class="flex items-center gap-2 text-sm font-semibold">
+            <span class="grid size-4 shrink-0 place-items-center rounded-full border-2" :class="settings.voice === o.id ? 'border-primary' : 'border-border'">
+              <span v-if="settings.voice === o.id" class="size-2 rounded-full bg-primary" />
+            </span>
+            {{ o.name }}
+          </span>
+          <span class="text-xs text-muted-foreground">{{ o.note }}</span>
+        </button>
+      </div>
+      <template v-if="settings.voice === 'ai'">
+        <p v-if="mode === 'sim'" class="flex items-start gap-2 rounded-xl bg-accent/20 px-3 py-2 text-xs">
+          <CircleAlert class="mt-0.5 size-4 shrink-0" /> ใส่ API key ด้านบนก่อน — ระหว่างนี้ปุ่มฟังจะใช้เสียงของเครื่องไปก่อน
+        </p>
+        <div v-if="info" class="flex flex-col gap-2">
+          <div v-for="v in info.voices" :key="v.id" class="flex items-center gap-3 rounded-xl border p-2 pl-3 transition-colors"
+            :class="settings.aiVoice === v.id ? 'border-primary bg-background' : 'border-transparent bg-background/60'">
+            <button type="button" class="flex min-w-0 flex-1 items-center gap-3 text-left" @click="settings.aiVoice = v.id">
+              <span class="grid size-5 shrink-0 place-items-center rounded-full border-2" :class="settings.aiVoice === v.id ? 'border-primary' : 'border-border'">
+                <span v-if="settings.aiVoice === v.id" class="size-2.5 rounded-full bg-primary" />
+              </span>
+              <span class="flex min-w-0 flex-col">
+                <span class="text-sm font-semibold">{{ v.name }}</span>
+                <span class="text-xs text-muted-foreground">{{ v.note }}</span>
+              </span>
+            </button>
+            <Button variant="outline" size="icon-lg" class="size-10 shrink-0 rounded-full" :aria-label="`ฟังเสียง ${v.name}`" @click="tryVoice(v.id)">
+              <LoaderCircle v-if="voiceLoading?.startsWith(`${v.id}|`)" class="size-4 animate-spin" /><Volume2 v-else class="size-4" />
+            </Button>
+          </div>
+        </div>
+        <p class="text-xs text-muted-foreground">
+          ใช้ {{ info?.ttsModel ?? "google/gemini-3.8-flash-tts" }} ผ่าน AI Gateway · แต่ละประโยคสร้างครั้งเดียวแล้วเก็บไว้ฟังซ้ำ ราวประโยคละ 2 สตางค์ · เสียงครั้งแรกใช้เวลา 2–4 วินาที
+        </p>
+      </template>
     </div>
 
     <!-- What kind of word -->

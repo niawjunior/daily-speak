@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { toast } from "vue-sonner";
-import { AlarmClock, ArrowRight, CircleCheck, Download, Flame, Lightbulb, Medal, Mic, RotateCcw, Sparkles, Volume2 } from "@lucide/vue";
+import { AlarmClock, ArrowRight, CircleCheck, Download, Flame, Lightbulb, LoaderCircle, Medal, Mic, RotateCcw, Sparkles, Volume2 } from "@lucide/vue";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { categories, levels, scoreLook, thaiDate, toneClass, type Today, type WordCard } from "@/data/words";
 import { api } from "@/lib/api";
 import { aiTriedOn, makeTodayWord, modelName } from "@/lib/ai";
+import { preloadVoice, voiceLoading } from "@/lib/voice";
 import { install, installed, installHidden } from "@/lib/pwa";
 import { settings } from "@/lib/settings";
 import { say } from "@/lib/speech";
@@ -36,6 +37,7 @@ async function load(): Promise<void> {
   }
   today.value = t.data;
   recent.value = w.data.slice(1, 4);
+  void preloadVoice([t.data.word.word, ...t.data.word.sentences.map((s) => s.en)]);
   // The first visit of the day with "สร้างคำใหม่ด้วย AI ทุกวัน" on: AI makes today's word.
   if (settings.value.aiDaily && !t.data.word.source && aiTriedOn.value !== t.data.date) {
     aiTriedOn.value = t.data.date;
@@ -116,7 +118,7 @@ onMounted(load);
             </div>
             <Button size="icon-lg" class="size-12 shrink-0 rounded-full bg-primary-foreground text-primary hover:bg-primary-foreground/90" aria-label="ฟังเสียง"
               @click="say(word.word, settings.accent, settings.rate)">
-              <Volume2 class="size-5" />
+              <LoaderCircle v-if="voiceLoading?.endsWith(`|${word.word}`)" class="size-5 animate-spin" /><Volume2 v-else class="size-5" />
             </Button>
           </div>
           <p class="text-xl font-medium">{{ word.meaning }}</p>
